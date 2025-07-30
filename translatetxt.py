@@ -1,7 +1,8 @@
 import text_utils
 import dspy
 import web_scraper
-from dspyBot import Translator, context_dict, url_dict, ChapterCleaner
+from dspyBot import Translator, ChapterCleaner
+import dict_utils
 from pathlib import Path
 
 def chapter_comparator(path):
@@ -20,6 +21,11 @@ dspy.configure(lm=lm)
 
 url = str(input("Novel name/url: "))
 context = []
+
+# Load dictionaries using dict_utils
+url_dict = dict_utils.load_dict('url_dict')
+context_dict = dict_utils.load_dict('context_dict')
+
 if (text_utils.normalize_text(url) in url_dict.keys()):
     url = url_dict[text_utils.normalize_text(url)]
 

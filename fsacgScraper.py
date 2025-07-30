@@ -1,7 +1,8 @@
 import dspy
 import web_scraper
 import requests
-from dspyBot import Translator, NameCorrector, context_dict, url_dict, volume_dict, name_dict
+from dspyBot import Translator, NameCorrector
+import dict_utils
 from PIL import Image
 import os
 from text_utils import normalize_text, replace_with_dictionary
@@ -16,6 +17,13 @@ dspy.configure(lm=lm, max_tokens=10000)
 
 url = str(input("Novel name/url: "))
 context = []
+
+# Load dictionaries using dict_utils
+url_dict = dict_utils.load_dict('url_dict')
+context_dict = dict_utils.load_dict('context_dict')
+volume_dict = dict_utils.load_dict('volume_dict')
+name_dict = dict_utils.load_dict('name_dict')
+
 if (normalize_text(url) in url_dict.keys()):
     url = url_dict[normalize_text(url)]
 

@@ -4,7 +4,8 @@ import web_scraper
 import selenium_utils
 import text_utils
 import re
-from dspyBot import Translator, NameCorrector, context_dict, url_dict, volume_dict, name_dict, manual_name_translation_dict
+from dspyBot import Translator, NameCorrector
+import dict_utils
 import dspy
 from dotenv import load_dotenv
 import os
@@ -343,6 +344,12 @@ def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translati
 
 if __name__ == "__main__":
     url = str(input("Novel name/url: "))#"theres no way a temp magical girl like me could be cute right"
+
+    # Load dictionaries using dict_utils
+    url_dict = dict_utils.load_dict('url_dict')
+    context_dict = dict_utils.load_dict('context_dict')
+    name_dict = dict_utils.load_dict('name_dict')
+    manual_name_translation_dict = dict_utils.load_dict('manual_name_translation_dict')
 
     if (text_utils.normalize_text(url) in url_dict.keys()):
         url = url_dict[text_utils.normalize_text(url)]

@@ -1,4 +1,5 @@
 texts/*
 debug/*
 temp/*
+data/*
 .env
