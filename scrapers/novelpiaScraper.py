@@ -1,10 +1,8 @@
 import automated_login
-import web_scraper
-import selenium_utils
-import text_utils
+import scrapers.helpers as helpers
+import scrapers.selenium_utils as selenium_utils
 import re
 from dspyBot import Translator, NameCorrector
-import dict_utils
 import dspy
 from dotenv import load_dotenv
 import os
@@ -21,8 +19,6 @@ try:
     SELENIUM_AVAILABLE = True
 except ImportError:
     SELENIUM_AVAILABLE = False
-
-load_dotenv()
 
 def is_single_english_word(text):
     """
@@ -305,14 +301,14 @@ def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translati
 
             #translate chapter
             answer = tl(chapter_text, last_chapter_summary, glossary = manual_name_translation)
-            chapter_text = text_utils.replace_with_dictionary(answer.translation, manual_name_translation, confident=True)
+            chapter_text = helpers.replace_with_dictionary(answer.translation, manual_name_translation, confident=True)
             #get summary to use for next chapter
             with dspy.context(lm=dspy.LM('openai/gpt-4o-mini')):
                 last_chapter_summary = dspy.Predict('chapter, last_chapter_summary -> summary')(chapter = chapter_text, last_chapter_summary = last_chapter_summary).summary
             
             #save translated chapter
             title = dspy.Predict('prompt, title -> translation')(prompt="Please translate this title to English.", title=titles[i]).translation
-            with open(name+"/translated/v"+str(1)+"c"+str(i)+"("+str(i)+")_"+web_scraper.sanitize_filename(title)+".txt", "w", encoding="utf-8") as text_file:
+            with open(name+"/translated/v"+str(1)+"c"+str(i)+"("+str(i)+")_"+helpers.sanitize_filename(title)+".txt", "w", encoding="utf-8") as text_file:
                     text_file.write(chapter_text)
 
         cost = sum([x['cost'] for x in lm.history if x['cost'] is not None])  # in USD, as calculated by LiteLLM for certain providers
@@ -339,49 +335,3 @@ def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translati
         print("❌ An unexpected error occurred:")
         print(f"   {str(e)}")
         print("   Scraping failed or was interrupted.")
-
-
-if __name__ == "__main__":
-    url = str(input("Novel name/url: "))#"theres no way a temp magical girl like me could be cute right"
-
-    # Load dictionaries using dict_utils
-    url_dict = dict_utils.load_dict('url_dict')
-    context_dict = dict_utils.load_dict('context_dict')
-    name_dict = dict_utils.load_dict('name_dict')
-    manual_name_translation_dict = dict_utils.load_dict('manual_name_translation_dict')
-
-    if (text_utils.normalize_text(url) in url_dict.keys()):
-        url = url_dict[text_utils.normalize_text(url)]
-
-    if (url in context_dict.keys()):
-        print("Found saved context for this novel")
-        context = context_dict[url]
-    else:
-        print("No saved context found for this novel")
-
-
-    name = "unrecognized"
-    if url in name_dict.keys():
-        name = name_dict[url]
-    print("Title:", name)
-
-    manual_name_translation = {}
-    if url in manual_name_translation_dict.keys():
-        print("Found manual name translation for this novel")
-        manual_name_translation = manual_name_translation_dict[url]
-    
-
-    text_utils.ensure_directory_exists(name + "/translated")
-    text_utils.ensure_directory_exists(name + "/untranslated")
-    
-    pickup = bool(input("Pickup from where you left off? (y/n): ").lower().strip() == 'y')
-    if pickup:
-        start_chapter = text_utils.get_last_chapter_number(name + "/translated", debug=False) + 1
-        end_chapter = 9999
-    else:
-        start_chapter = 0
-        end_chapter = 9999
-    print("Starting from chapter", start_chapter)
-
-    novelpia_scrape(url, name,start_chapter, end_chapter, manual_name_translation)
-    
