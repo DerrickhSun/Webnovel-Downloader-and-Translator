@@ -1,4 +1,3 @@
-from website_viewer import analyze_website
 import automated_login
 import web_scraper
 import selenium_utils

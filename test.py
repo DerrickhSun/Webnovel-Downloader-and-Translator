@@ -1,9 +1,6 @@
-import numpy as np
+import sys
+import os
 
-# Save
-dictionary = {'hello':'world'}
-np.save('my_file.npy', dictionary) 
+from utils.hi import hi
 
-# Load
-read_dictionary = np.load('my_file.npy',allow_pickle='TRUE').item()
-print(read_dictionary['hello']) # displays "world"
+hi()
