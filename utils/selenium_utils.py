@@ -4,10 +4,13 @@ All Selenium-related scraping utilities, refactored from web_scraper.py
 import time
 import json
 import random
+import subprocess
+import sys
 from typing import List, Optional, Union
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from web_scraper import session_manager
+
 
 # Selenium imports
 try:
@@ -30,6 +33,120 @@ try:
 except ImportError:
     UNDETECTED_AVAILABLE = False
     print("Undetected ChromeDriver not available. Install with: pip install undetected-chromedriver")
+
+def get_chrome_version():
+    """
+    Get the current Chrome browser version.
+    
+    Returns:
+        str: Chrome version (e.g., "138.0.7204.184")
+    """
+    try:
+        if sys.platform == "win32":
+            # Windows
+            result = subprocess.run(
+                ['reg', 'query', 'HKEY_CURRENT_USER\\Software\\Google\\Chrome\\BLBeacon', '/v', 'version'],
+                capture_output=True, text=True, shell=True
+            )
+            if result.returncode == 0:
+                # Extract version from output
+                for line in result.stdout.split('\n'):
+                    if 'version' in line.lower():
+                        version = line.split()[-1]
+                        return version
+        else:
+            # Linux/Mac
+            result = subprocess.run(['google-chrome', '--version'], capture_output=True, text=True)
+            if result.returncode == 0:
+                # Extract version from output like "Google Chrome 138.0.7204.184"
+                version = result.stdout.strip().split()[-1]
+                return version
+    except Exception as e:
+        print(f"Warning: Could not detect Chrome version: {e}")
+    
+    return None
+
+def create_chrome_driver_with_auto_version(options=None, debug=True):
+    """
+    Create a Chrome driver with automatic version compatibility.
+    
+    Args:
+        options: Chrome options
+        debug (bool): If True, prints debug information
+        
+    Returns:
+        Chrome driver instance
+    """
+    if not UNDETECTED_AVAILABLE:
+        raise ImportError("Undetected ChromeDriver is not available. Install with: pip install undetected-chromedriver")
+    
+    if debug:
+        print("🔍 Setting up Chrome driver with automatic version compatibility...")
+    
+    # Get Chrome version
+    chrome_version = get_chrome_version()
+    if chrome_version and debug:
+        print(f"🔍 Detected Chrome version: {chrome_version}")
+    
+    try:
+        # Method 1: Try with version specification
+        if chrome_version:
+            # Extract major version (e.g., "138" from "138.0.7204.184")
+            major_version = chrome_version.split('.')[0]
+            if debug:
+                print(f"🔍 Using ChromeDriver for major version: {major_version}")
+            
+            driver = uc.Chrome(options=options, version_main=int(major_version))
+            if debug:
+                print("✅ ChromeDriver created successfully with version specification")
+            return driver
+    except Exception as e:
+        if debug:
+            print(f"⚠️  Failed to create driver with version specification: {e}")
+    
+    try:
+        # Method 2: Try without version specification (let undetected-chromedriver handle it)
+        if debug:
+            print("🔍 Trying ChromeDriver without version specification...")
+        
+        driver = uc.Chrome(options=options)
+        if debug:
+            print("✅ ChromeDriver created successfully without version specification")
+        return driver
+    except Exception as e:
+        if debug:
+            print(f"⚠️  Failed to create driver without version specification: {e}")
+    
+    try:
+        # Method 3: Try with use_subprocess=True (more stable)
+        if debug:
+            print("🔍 Trying ChromeDriver with subprocess mode...")
+        
+        driver = uc.Chrome(options=options, use_subprocess=True)
+        if debug:
+            print("✅ ChromeDriver created successfully with subprocess mode")
+        return driver
+    except Exception as e:
+        if debug:
+            print(f"⚠️  Failed to create driver with subprocess mode: {e}")
+    
+    # If all methods fail, provide helpful error message
+    error_msg = f"""
+❌ Failed to create ChromeDriver. This could be due to:
+
+1. Chrome browser not installed or not in PATH
+2. ChromeDriver version mismatch
+3. Permission issues
+
+Troubleshooting steps:
+1. Make sure Chrome browser is installed and up to date
+2. Try updating undetected-chromedriver: pip install --upgrade undetected-chromedriver
+3. Try manually downloading ChromeDriver from: https://chromedriver.chromium.org/
+4. Check if Chrome is running and close all instances
+
+Chrome version detected: {chrome_version or 'Unknown'}
+"""
+    raise RuntimeError(error_msg)
 
 # The following global variables must be imported from web_scraper.py:
 # - CONFIRMED_HEADERS
@@ -101,7 +218,7 @@ def fetch_with_exact_headers(url: str, CONFIRMED_HEADERS: dict, main_id: str = N
             print(f"Accept-Language: {CONFIRMED_HEADERS['Accept-Language']}")
         
         # Initialize the undetected driver
-        driver = uc.Chrome(options=options)
+        driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
         
         # Re-enable JavaScript after driver initialization
         driver.execute_script("""
@@ -832,7 +949,7 @@ def fetch_with_exact_headers_preserve_cookies(url: str, CONFIRMED_HEADERS: dict,
             print(f"Accept-Language: {CONFIRMED_HEADERS['Accept-Language']}")
         
         # Initialize the undetected driver
-        driver = uc.Chrome(options=options)
+        driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
         
         # Re-enable JavaScript after driver initialization
         driver.execute_script("""
@@ -1395,22 +1512,25 @@ def fetch_with_existing_driver_div(driver, url: str, div_id: str = None, div_cla
     )
 
 def fetch_with_existing_driver_list(driver, url: str, list_id: str = None, list_class: str = None, 
-                                   wait_time: int = 5, timeout: int = 30, debug: bool = True) -> Optional[dict]:
+                                   parent_div_class: str = None, wait_time: int = 5, timeout: int = 30, debug: bool = True) -> Optional[dict]:
     """
     Fetches content from list elements (ul, ol) using an existing driver instance.
+    Can filter lists by their class name and/or their parent div's class.
     
     Args:
         driver: Existing WebDriver instance with authenticated session
         url (str): URL to fetch
         list_id (str): ID of the list element to extract content from
         list_class (str): Class name of list elements to extract content from
+        parent_div_class (str): If provided, only fetch lists inside divs with this class
         wait_time (int): Time to wait for JavaScript rendering
         timeout (int): Timeout for element waiting
         debug (bool): If True, prints debug information
     
     Returns:
         Optional[dict]: Dictionary containing:
-            - 'content': Extracted text content (str or List[str])
+            - 'content': 2D array where content[list_index][item_index] contains the text content
+            - 'urls': 2D array where urls[list_index][item_index] contains the href URL for that item
             - 'elements': List of Selenium WebElement objects
             - 'soup_elements': List of BeautifulSoup element objects
             - 'page_info': Dictionary with page title, URL, etc.
@@ -1421,17 +1541,32 @@ def fetch_with_existing_driver_list(driver, url: str, list_id: str = None, list_
         print(f"URL: {url}")
         print(f"List ID: {list_id}")
         print(f"List Class: {list_class}")
+        print(f"Parent Div Class: {parent_div_class}")
     
-    return _fetch_with_existing_driver_generic(
-        driver=driver,
-        url=url,
-        element_type="ul,ol",  # Both ul and ol elements
-        element_id=list_id,
-        element_class=list_class,
-        wait_time=wait_time,
-        timeout=timeout,
-        debug=debug
-    )
+    # If parent_div_class is specified, we need to use a custom approach
+    if parent_div_class:
+        return _fetch_with_existing_driver_list_with_parent(
+            driver=driver,
+            url=url,
+            list_id=list_id,
+            list_class=list_class,
+            parent_div_class=parent_div_class,
+            wait_time=wait_time,
+            timeout=timeout,
+            debug=debug
+        )
+    else:
+        # Use the existing generic approach for backward compatibility
+        return _fetch_with_existing_driver_generic(
+            driver=driver,
+            url=url,
+            element_type="ul,ol",  # Both ul and ol elements
+            element_id=list_id,
+            element_class=list_class,
+            wait_time=wait_time,
+            timeout=timeout,
+            debug=debug
+        )
 
 def fetch_with_existing_driver_section(driver, url: str, section_id: str = None, section_class: str = None, 
                                       wait_time: int = 5, timeout: int = 30, debug: bool = True) -> Optional[dict]:
@@ -1551,6 +1686,154 @@ def fetch_with_existing_driver_custom(driver, url: str, element_type: str, eleme
         timeout=timeout,
         debug=debug
     )
+
+def process_list_content(list_element, debug: bool = True):
+    """Special processing for list elements to preserve list structure"""
+    if debug:
+        print(f"🔍 Processing list element: {list_element.name}")
+    
+    # Get all list items
+    list_items = list_element.find_all('li')
+    
+    if debug:
+        print(f"🔍 Found {len(list_items)} list items")
+    
+    # Process each list item
+    processed_items = []
+    list_urls = []
+    
+    for i, item in enumerate(list_items):
+        if debug:
+            print(f"🔍 Processing list item {i+1}")
+        
+        # Get text content of the item
+        item_text = item.get_text().strip()
+        
+        # Look for href links in this list item
+        href_link = None
+        a_tag = item.find('a')
+        if a_tag and a_tag.get('href'):
+            href_link = a_tag.get('href')
+            if debug:
+                print(f"🔍 Found href: {href_link}")
+        
+        if item_text:
+            # Add bullet point or number based on list type
+            if list_element.name == 'ul':
+                processed_items.append(f"• {item_text}")
+            elif list_element.name == 'ol':
+                processed_items.append(f"{i+1}. {item_text}")
+            else:
+                processed_items.append(item_text)
+            
+            # Store the href link for this item
+            list_urls.append(href_link)
+            
+            if debug:
+                print(f"🔍 List item {i+1}: {item_text[:100]}{'...' if len(item_text) > 100 else ''}")
+                if href_link:
+                    print(f"🔍 List item {i+1} href: {href_link}")
+    
+    # Join all items with newlines
+    final_content = '\n'.join(processed_items)
+    
+    if debug:
+        print(f"🔍 Final list content length: {len(final_content)}")
+        print(f"🔍 Found {len([url for url in list_urls if url])} href links")
+        if final_content:
+            print(f"🔍 Final list content (first 200 chars): {repr(final_content[:200])}")
+        else:
+            print("❌ Final list content is empty")
+    
+    return {
+        'content': final_content,
+        'urls': list_urls
+    }
+
+def process_list_with_urls(list_element, debug: bool = True):
+    """
+    Process list elements and return both content and URLs in a structured format.
+    Similar to web_scraper.fetch_lists_from_url but for selenium processing.
+    
+    Args:
+        list_element: BeautifulSoup list element
+        debug (bool): If True, prints debug information
+    
+    Returns:
+        dict: Dictionary containing:
+            - 'items': List of dictionaries with 'text' and 'href' keys (single list)
+            - 'content': Formatted text content
+            - 'urls': List of href URLs (single list)
+    """
+    if debug:
+        print(f"🔍 Processing list element with URLs: {list_element.name}")
+    
+    # Get all list items
+    list_items = list_element.find_all('li')
+    
+    if debug:
+        print(f"🔍 Found {len(list_items)} list items")
+    
+    # Process each list item
+    items = []
+    processed_items = []
+    list_urls = []
+    
+    for i, item in enumerate(list_items):
+        if debug:
+            print(f"🔍 Processing list item {i+1}")
+        
+        # Get text content of the item
+        item_text = item.get_text().strip()
+        
+        # Look for href links in this list item
+        href_link = None
+        a_tag = item.find('a')
+        if a_tag and a_tag.get('href'):
+            href_link = a_tag.get('href')
+            if debug:
+                print(f"🔍 Found href: {href_link}")
+        
+        if item_text:
+            # Create item dictionary
+            item_dict = {
+                'text': item_text,
+                'href': href_link
+            }
+            items.append(item_dict)
+            
+            # Add bullet point or number based on list type
+            if list_element.name == 'ul':
+                processed_items.append(f"• {item_text}")
+            elif list_element.name == 'ol':
+                processed_items.append(f"{i+1}. {item_text}")
+            else:
+                processed_items.append(item_text)
+            
+            # Store the href link for this item
+            list_urls.append(href_link)
+            
+            if debug:
+                print(f"🔍 List item {i+1}: {item_text[:100]}{'...' if len(item_text) > 100 else ''}")
+                if href_link:
+                    print(f"🔍 List item {i+1} href: {href_link}")
+    
+    # Join all items with newlines
+    final_content = '\n'.join(processed_items)
+    
+    if debug:
+        print(f"🔍 Final list content length: {len(final_content)}")
+        print(f"🔍 Found {len([url for url in list_urls if url])} href links")
+        if final_content:
+            print(f"🔍 Final list content (first 200 chars): {repr(final_content[:200])}")
+        else:
+            print("❌ Final list content is empty")
+    
+    return {
+        'items': items,
+        'content': final_content,
+        'urls': list_urls
+    }
 
 def _fetch_with_existing_driver_generic(driver, url: str, element_type: str, element_id: str = None, element_class: str = None, 
                                        wait_time: int = 5, timeout: int = 30, debug: bool = True) -> Optional[dict]:
@@ -1810,7 +2093,12 @@ def _fetch_with_existing_driver_generic(driver, url: str, element_type: str, ele
             
             # Special handling for list elements
             if element.name in ['ul', 'ol']:
-                return process_list_content(element, debug)
+                result = process_list_content(element, debug)
+                # Handle the new return format
+                if isinstance(result, dict):
+                    return result['content']  # Return just the content for backward compatibility
+                else:
+                    return result  # Handle old format if still used
             
             # Replace <br> tags with newlines
             for br in element.find_all(['br']):
@@ -3324,4 +3612,546 @@ def navigate_episodes(driver, start_episode: int = None, end_episode: int = None
             'failed_episodes': [],
             'total_episodes': 0,
             'current_episode': None
+        }
+
+def _fetch_with_existing_driver_list_with_parent(driver, url: str, list_id: str = None, list_class: str = None, 
+                                                parent_div_class: str = None, wait_time: int = 5, timeout: int = 30, debug: bool = True) -> Optional[dict]:
+    """
+    Helper function to fetch list elements that are inside a specific parent div.
+    This function handles the parent element filtering that the generic function doesn't support.
+    
+    Args:
+        driver: Existing WebDriver instance with authenticated session
+        url (str): URL to fetch
+        list_id (str): ID of the list element to extract content from
+        list_class (str): Class name of list elements to extract content from
+        parent_div_class (str): Only fetch lists inside divs with this class
+        wait_time (int): Time to wait for JavaScript rendering
+        timeout (int): Timeout for element waiting
+        debug (bool): If True, prints debug information
+    
+    Returns:
+        Optional[dict]: Dictionary containing:
+            - 'content': Extracted text content (str or List[str])
+            - 'elements': List of Selenium WebElement objects
+            - 'soup_elements': List of BeautifulSoup element objects
+            - 'page_info': Dictionary with page title, URL, etc.
+            - 'success': Boolean indicating if fetch was successful
+    """
+    if debug:
+        print(f"Using parent-aware list fetching approach")
+    
+    # Validate URL
+    try:
+        result = urlparse(url)
+        if not all([result.scheme, result.netloc]):
+            raise ValueError("Invalid URL format")
+    except Exception as e:
+        raise ValueError(f"Invalid URL: {str(e)}")
+
+    # Validate parameters
+    if list_id is None and list_class is None:
+        raise ValueError("Either list_id or list_class must be provided")
+    if list_id is not None and list_class is not None:
+        raise ValueError("Only one of list_id or list_class should be provided")
+
+    try:
+        # Check if driver is still valid
+        try:
+            current_url = driver.current_url
+            if debug:
+                print(f"Current driver URL: {current_url}")
+        except Exception as e:
+            raise Exception(f"Driver is no longer valid: {str(e)}")
+        
+        # Add random delay to simulate human behavior
+        if debug:
+            print("Adding random delay to simulate human behavior...")
+        time.sleep(random.uniform(1, 3))
+        
+        if debug:
+            print("Navigating to target URL...")
+        
+        # Navigate to the target URL
+        driver.get(url)
+        
+        # Add random delay after page load
+        time.sleep(random.uniform(2, 5))
+        
+        # Simulate human behavior to avoid detection
+        simulate_human_behavior(driver, debug)
+        
+        # Get page info
+        page_info = {
+            'title': driver.title,
+            'current_url': driver.current_url,
+            'page_source_length': len(driver.page_source)
+        }
+        
+        # Wait for the page to load
+        if debug:
+            print(f"Waiting {wait_time} seconds for JavaScript to render...")
+        time.sleep(wait_time)
+        
+        # Wait for the parent div to be present first
+        wait = WebDriverWait(driver, timeout)
+        
+        if debug:
+            print(f"Waiting for parent div with class: {parent_div_class}")
+        
+        try:
+            parent_divs = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, f"div.{parent_div_class}")))
+            if debug:
+                print(f"✅ Found {len(parent_divs)} parent divs with class '{parent_div_class}'")
+        except TimeoutException:
+            if debug:
+                print(f"❌ Timeout waiting for parent div with class: {parent_div_class}")
+            return {
+                'content': None,
+                'elements': [],
+                'soup_elements': [],
+                'page_info': page_info,
+                'success': False
+            }
+        
+        # Get the page source after JavaScript has rendered
+        page_source = driver.page_source
+        
+        if debug:
+            print(f"Page source length: {len(page_source)}")
+        
+        # Parse the rendered HTML
+        soup = BeautifulSoup(page_source, 'html.parser')
+        
+        # Find all parent divs with the specified class
+        parent_div_elements = soup.find_all('div', class_=parent_div_class)
+        
+        if debug:
+            print(f"Found {len(parent_div_elements)} parent divs in BeautifulSoup")
+        
+        # Collect all matching lists from within the parent divs
+        all_matching_lists = []  # 2D array: [list_index][item_index]
+        list_urls = []           # 2D array: [list_index][item_index]
+        selenium_elements = []
+        soup_elements = []
+        
+        for parent_div in parent_div_elements:
+            if debug:
+                print(f"Searching for lists in parent div: {parent_div.get('class', [])}")
+            
+            # Find all list elements within this parent div
+            lists_in_parent = parent_div.find_all(['ul', 'ol'])
+            
+            if debug:
+                print(f"Found {len(lists_in_parent)} lists in this parent div")
+            
+            for list_element in lists_in_parent:
+                # Check if this list matches our criteria
+                should_include = True
+                
+                # Check list ID if specified
+                if list_id:
+                    if list_element.get('id') != list_id:
+                        should_include = False
+                
+                # Check list class if specified
+                if list_class:
+                    list_classes = list_element.get('class', [])
+                    if list_class not in list_classes:
+                        should_include = False
+                
+                if should_include:
+                    if debug:
+                        print(f"✅ Including list: {list_element.name} with classes {list_element.get('class', [])}")
+                    
+                    # Process the list content using the global function
+                    processed_content = process_list_content(list_element, debug)
+                    if processed_content:
+                        # Handle the new return format
+                        if isinstance(processed_content, dict):
+                            # Extract content as a list of items for 2D structure
+                            content_items = processed_content['content'].split('\n')
+                            all_matching_lists.append(content_items)
+                            # Store URLs separately in 2D structure
+                            if 'urls' in processed_content:
+                                list_urls.append(processed_content['urls'])
+                            else:
+                                list_urls.append([None] * len(content_items))
+                        else:
+                            # Handle old format - split into items for 2D structure
+                            content_items = processed_content.split('\n')
+                            all_matching_lists.append(content_items)
+                            list_urls.append([None] * len(content_items))
+                        soup_elements.append(list_element)
+                        
+                        # Try to find corresponding Selenium element
+                        try:
+                            # Create a CSS selector for this specific list
+                            list_selector = f"{list_element.name}"
+                            if list_id:
+                                list_selector += f"#{list_id}"
+                            elif list_class:
+                                list_selector += f".{list_class}"
+                            
+                            # Find it within the parent div
+                            parent_selector = f"div.{parent_div_class}"
+                            full_selector = f"{parent_selector} {list_selector}"
+                            
+                            selenium_element = driver.find_element(By.CSS_SELECTOR, full_selector)
+                            selenium_elements.append(selenium_element)
+                        except Exception as e:
+                            if debug:
+                                print(f"⚠️  Could not find Selenium element for list: {e}")
+        
+        if debug:
+            print(f"Total matching lists found: {len(all_matching_lists)}")
+            for i, (content_list, url_list) in enumerate(zip(all_matching_lists, list_urls)):
+                print(f"List {i}: {len(content_list)} items, {len([url for url in url_list if url])} URLs")
+        
+        # Return the results
+        if all_matching_lists:
+            return {
+                'content': all_matching_lists,  # 2D array: [list_index][item_index]
+                'urls': list_urls,              # 2D array: [list_index][item_index]
+                'elements': selenium_elements,
+                'soup_elements': soup_elements,
+                'page_info': page_info,
+                'success': True
+            }
+        else:
+            if debug:
+                print("❌ No matching lists found")
+            return {
+                'content': None,
+                'urls': [],
+                'elements': [],
+                'soup_elements': [],
+                'page_info': page_info,
+                'success': False
+            }
+        
+    except Exception as e:
+        if debug:
+            print(f"❌ Error in parent-aware list fetching: {str(e)}")
+        return {
+            'content': None,
+            'elements': [],
+            'soup_elements': [],
+            'page_info': page_info if 'page_info' in locals() else {},
+            'success': False
+        }
+
+def fetch_with_existing_driver_list_with_urls(driver, url: str, list_id: str = None, list_class: str = None, 
+                                             parent_div_class: str = None, wait_time: int = 5, timeout: int = 30, debug: bool = True) -> Optional[dict]:
+    """
+    Fetches content and URLs from list elements (ul, ol) using an existing driver instance.
+    Returns both content and href links in a structured format similar to web_scraper.fetch_lists_from_url.
+    
+    Args:
+        driver: Existing WebDriver instance with authenticated session
+        url (str): URL to fetch
+        list_id (str): ID of the list element to extract content from
+        list_class (str): Class name of list elements to extract content from
+        parent_div_class (str): If provided, only fetch lists inside divs with this class
+        wait_time (int): Time to wait for JavaScript rendering
+        timeout (int): Timeout for element waiting
+        debug (bool): If True, prints debug information
+    
+    Returns:
+        Optional[dict]: Dictionary containing:
+            - 'lists': 2D array where lists[list_index][item_index] contains dict with 'text' and 'href' keys
+            - 'content': Extracted text content (str or List[str])
+            - 'urls': 2D array where urls[list_index][item_index] contains the href URL for that item
+            - 'elements': List of Selenium WebElement objects
+            - 'soup_elements': List of BeautifulSoup element objects
+            - 'page_info': Dictionary with page title, URL, etc.
+            - 'success': Boolean indicating if fetch was successful
+    
+    Example:
+        result = fetch_with_existing_driver_list_with_urls(driver, url, list_class="cf", parent_div_class="volume")
+        if result['success']:
+            # Access first list, first item
+            first_item = result['lists'][0][0]  # {'text': 'Chapter 1', 'href': '/chapter/1'}
+            first_url = result['urls'][0][0]    # '/chapter/1'
+            
+            # Access second list, third item
+            second_list_third_item = result['lists'][1][2]  # {'text': 'Chapter 3', 'href': '/chapter/3'}
+    """
+    if debug:
+        print(f"\n=== Fetching List Content and URLs with Existing Driver ===")
+        print(f"URL: {url}")
+        print(f"List ID: {list_id}")
+        print(f"List Class: {list_class}")
+        print(f"Parent Div Class: {parent_div_class}")
+    
+    # If parent_div_class is specified, we need to use a custom approach
+    if parent_div_class:
+        return _fetch_with_existing_driver_list_with_urls_and_parent(
+            driver=driver,
+            url=url,
+            list_id=list_id,
+            list_class=list_class,
+            parent_div_class=parent_div_class,
+            wait_time=wait_time,
+            timeout=timeout,
+            debug=debug
+        )
+    else:
+        # Use the existing generic approach but with URL processing
+        result = _fetch_with_existing_driver_generic(
+            driver=driver,
+            url=url,
+            element_type="ul,ol",  # Both ul and ol elements
+            element_id=list_id,
+            element_class=list_class,
+            wait_time=wait_time,
+            timeout=timeout,
+            debug=debug
+        )
+        
+        # Process the result to extract URLs
+        if result and result.get('success'):
+            # Convert the content to the structured format
+            lists_with_urls = []
+            all_urls = []
+            
+            if isinstance(result['content'], list):
+                for content in result['content']:
+                    # For now, we'll need to re-process to get URLs
+                    # This is a limitation of the current approach
+                    lists_with_urls.append([{'text': content, 'href': None}])
+                    all_urls.append([None])  # 2D structure
+            else:
+                # Single content item
+                lists_with_urls.append([{'text': result['content'], 'href': None}])
+                all_urls.append([None])  # 2D structure
+            
+            result['lists'] = lists_with_urls
+            result['urls'] = all_urls
+            
+        return result
+
+def _fetch_with_existing_driver_list_with_urls_and_parent(driver, url: str, list_id: str = None, list_class: str = None, 
+                                                         parent_div_class: str = None, wait_time: int = 5, timeout: int = 30, debug: bool = True) -> Optional[dict]:
+    """
+    Helper function to fetch list elements with URLs that are inside a specific parent div.
+    Returns structured data similar to web_scraper.fetch_lists_from_url.
+    
+    Args:
+        driver: Existing WebDriver instance with authenticated session
+        url (str): URL to fetch
+        list_id (str): ID of the list element to extract content from
+        list_class (str): Class name of list elements to extract content from
+        parent_div_class (str): Only fetch lists inside divs with this class
+        wait_time (int): Time to wait for JavaScript rendering
+        timeout (int): Timeout for element waiting
+        debug (bool): If True, prints debug information
+    
+    Returns:
+        Optional[dict]: Dictionary containing:
+            - 'lists': List of lists, where each inner list contains dictionaries with 'text' and 'href' keys
+            - 'content': Extracted text content (str or List[str])
+            - 'urls': List of all href URLs found
+            - 'elements': List of Selenium WebElement objects
+            - 'soup_elements': List of BeautifulSoup element objects
+            - 'page_info': Dictionary with page title, URL, etc.
+            - 'success': Boolean indicating if fetch was successful
+    """
+    if debug:
+        print(f"Using parent-aware list fetching with URLs approach")
+    
+    # Validate URL
+    try:
+        result = urlparse(url)
+        if not all([result.scheme, result.netloc]):
+            raise ValueError("Invalid URL format")
+    except Exception as e:
+        raise ValueError(f"Invalid URL: {str(e)}")
+
+    # Validate parameters
+    if list_id is None and list_class is None:
+        raise ValueError("Either list_id or list_class must be provided")
+    if list_id is not None and list_class is not None:
+        raise ValueError("Only one of list_id or list_class should be provided")
+
+    try:
+        # Check if driver is still valid
+        try:
+            current_url = driver.current_url
+            if debug:
+                print(f"Current driver URL: {current_url}")
+        except Exception as e:
+            raise Exception(f"Driver is no longer valid: {str(e)}")
+        
+        # Add random delay to simulate human behavior
+        if debug:
+            print("Adding random delay to simulate human behavior...")
+        time.sleep(random.uniform(1, 3))
+        
+        if debug:
+            print("Navigating to target URL...")
+        
+        # Navigate to the target URL
+        driver.get(url)
+        
+        # Add random delay after page load
+        time.sleep(random.uniform(2, 5))
+        
+        # Simulate human behavior to avoid detection
+        simulate_human_behavior(driver, debug)
+        
+        # Get page info
+        page_info = {
+            'title': driver.title,
+            'current_url': driver.current_url,
+            'page_source_length': len(driver.page_source)
+        }
+        
+        # Wait for the page to load
+        if debug:
+            print(f"Waiting {wait_time} seconds for JavaScript to render...")
+        time.sleep(wait_time)
+        
+        # Wait for the parent div to be present first
+        wait = WebDriverWait(driver, timeout)
+        
+        if debug:
+            print(f"Waiting for parent div with class: {parent_div_class}")
+        
+        try:
+            parent_divs = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, f"div.{parent_div_class}")))
+            if debug:
+                print(f"✅ Found {len(parent_divs)} parent divs with class '{parent_div_class}'")
+        except TimeoutException:
+            if debug:
+                print(f"❌ Timeout waiting for parent div with class: {parent_div_class}")
+            return {
+                'lists': [],
+                'content': None,
+                'urls': [],
+                'elements': [],
+                'soup_elements': [],
+                'page_info': page_info,
+                'success': False
+            }
+        
+        # Get the page source after JavaScript has rendered
+        page_source = driver.page_source
+        
+        if debug:
+            print(f"Page source length: {len(page_source)}")
+        
+        # Parse the rendered HTML
+        soup = BeautifulSoup(page_source, 'html.parser')
+        
+        # Find all parent divs with the specified class
+        parent_div_elements = soup.find_all('div', class_=parent_div_class)
+        
+        if debug:
+            print(f"Found {len(parent_div_elements)} parent divs in BeautifulSoup")
+        
+        # Collect all matching lists from within the parent divs
+        all_lists = []  # 2D array: [list_index][item_index]
+        all_urls = []   # 2D array: [list_index][item_index]
+        selenium_elements = []
+        soup_elements = []
+        
+        for parent_div in parent_div_elements:
+            if debug:
+                print(f"Searching for lists in parent div: {parent_div.get('class', [])}")
+            
+            # Find all list elements within this parent div
+            lists_in_parent = parent_div.find_all(['ul', 'ol'])
+            
+            if debug:
+                print(f"Found {len(lists_in_parent)} lists in this parent div")
+            
+            for list_element in lists_in_parent:
+                # Check if this list matches our criteria
+                should_include = True
+                
+                # Check list ID if specified
+                if list_id:
+                    if list_element.get('id') != list_id:
+                        should_include = False
+                
+                # Check list class if specified
+                if list_class:
+                    list_classes = list_element.get('class', [])
+                    if list_class not in list_classes:
+                        should_include = False
+                
+                if should_include:
+                    if debug:
+                        print(f"✅ Including list: {list_element.name} with classes {list_element.get('class', [])}")
+                    
+                    # Process the list content using the new function
+                    processed_result = process_list_with_urls(list_element, debug)
+                    if processed_result and processed_result['items']:
+                        # Add the items as a separate list (preserving 2D structure)
+                        all_lists.append(processed_result['items'])
+                        # Add the URLs as a separate list (preserving 2D structure)
+                        all_urls.append(processed_result['urls'])
+                        soup_elements.append(list_element)
+                        
+                        # Try to find corresponding Selenium element
+                        try:
+                            # Create a CSS selector for this specific list
+                            list_selector = f"{list_element.name}"
+                            if list_id:
+                                list_selector += f"#{list_id}"
+                            elif list_class:
+                                list_selector += f".{list_class}"
+                            
+                            # Find it within the parent div
+                            parent_selector = f"div.{parent_div_class}"
+                            full_selector = f"{parent_selector} {list_selector}"
+                            
+                            selenium_element = driver.find_element(By.CSS_SELECTOR, full_selector)
+                            selenium_elements.append(selenium_element)
+                        except Exception as e:
+                            if debug:
+                                print(f"⚠️  Could not find Selenium element for list: {e}")
+        
+        if debug:
+            print(f"Total matching lists found: {len(all_lists)}")
+            print(f"Total URL lists found: {len(all_urls)}")
+            for i, (list_items, url_list) in enumerate(zip(all_lists, all_urls)):
+                print(f"List {i}: {len(list_items)} items, {len([url for url in url_list if url])} URLs")
+        
+        # Return the results
+        if all_lists:
+            return {
+                'lists': all_lists,  # 2D array: [list_index][item_index]
+                'content': all_lists,  # For backward compatibility
+                'urls': all_urls,   # 2D array: [list_index][item_index]
+                'elements': selenium_elements,
+                'soup_elements': soup_elements,
+                'page_info': page_info,
+                'success': True
+            }
+        else:
+            if debug:
+                print("❌ No matching lists found")
+            return {
+                'lists': [],
+                'content': None,
+                'urls': [],
+                'elements': [],
+                'soup_elements': [],
+                'page_info': page_info,
+                'success': False
+            }
+        
+    except Exception as e:
+        if debug:
+            print(f"❌ Error in parent-aware list fetching with URLs: {str(e)}")
+        return {
+            'lists': [],
+            'content': None,
+            'urls': [],
+            'elements': [],
+            'soup_elements': [],
+            'page_info': page_info if 'page_info' in locals() else {},
+            'success': False
         }

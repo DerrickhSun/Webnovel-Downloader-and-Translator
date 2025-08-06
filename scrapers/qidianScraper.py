@@ -249,69 +249,76 @@ def clean_novel_text_advanced(text, debug=False):
     return cleaned_text
 
 
-def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translation={}):
+def qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation={}):
     try:
         links = []
         titles = []
         last_chapter_summary = ""
-        url_header = "https://novelpia.com/viewer/"
 
 
-        login_result = automated_login.manual_login(url="https://novelpia.com/", debug=False) 
-        output = selenium_utils.fetch_with_existing_driver_div(login_result['driver'], url, div_class="page-link", debug=False)
+        login_result = automated_login.manual_login(url="https://www.qidian.com/", debug=False) 
+        #output = selenium_utils.fetch_with_existing_driver_div(login_result['driver'], url, div_class="page-link", debug=False)
 
+        lis = selenium_utils.fetch_with_existing_driver_list(login_result['driver'], url, list_class="volume-chapters", parent_div_class="catalog-volume", debug=False)
+        print(lis.keys())
+        zero_volume = False
 
-        page = 2
-        while True:
-            table = selenium_utils.interact_with_episode_table(login_result['driver'], debug=False)['episodes']
-            for o in table:
-                links.append(url_header + str(o['episode_no']))
-                titles.append(o['title'])
-            pagination = selenium_utils.interact_with_pagination(login_result['driver'], page_number=page, wait_time=1, debug=False)
-            if not pagination['click_success']:
-                break
-            page += 1
+        vol = 0 if zero_volume else 1
+        chap = 1
+        count = 1
+        lis2 = lis["urls"]
+        print(lis2)
 
         #print(links)
         lm = dspy.LM('openai/gpt-4o-mini', max_tokens=16000, temperature=0.8)
         dspy.configure(lm=lm)
         tl = Translator()
 
-
-        for i in range(len(links)):
-            if (i < start_chapter):
-                continue
-            print("Translating chapter", i, "of", len(links))
-
-            chapter = selenium_utils.fetch_with_existing_driver_custom(login_result['driver'], links[i], element_type="font", element_class="line", debug=False)['content']
-            if chapter == None:
-                print("Chapter", i, "is not available")
-                chapter = ["Chapter " + str(i) + " is not available"]
-
-            chapter_text = ""
-            for line in chapter:
-                # Filter out tokens from each line
-                filtered_line = filter_tokens_from_text(line, debug=False)
-                if filtered_line.strip():  # Only add non-empty lines
-                    chapter_text += filtered_line + "\n\n"
-
+        while (vol <= len(lis2)):
+            chap = 1
+            while (chap <= len(lis2[vol if zero_volume else vol - 1])):
+                if (count < start_chapter):
+                    chap += 1
+                    count += 1
+                    continue
+                target_url = lis2[vol if zero_volume else vol - 1][chap - 1]
+                print("translating volume", vol, "chapter", chap,"(", count, ")")
+                index = target_url.find("www.qidian.com")
+                chapter_text = selenium_utils.fetch_with_existing_driver_custom(
+                    login_result['driver'], 'https://' + target_url[index:], element_type="main", element_class="content", debug=False)['content']
+                
+                title = selenium_utils.fetch_with_existing_driver_custom(
+                    login_result['driver'], 'https://' + target_url[index:], element_type="h1", element_class="title", debug=False)['content']
+                title = dspy.Predict('prompt, title -> translation')(prompt="Please translate this title.", title = title).translation
             
-            
-            #save untranslated chapter
-            with open("texts/inprogress_translations/" + name + "/untranslated/v"+str(1)+"c"+str(i)+"("+str(i)+")_"+".txt", "w", encoding="utf-8") as text_file:
-                    text_file.write(chapter_text)
+                if not chapter_text:
+                    flag = False
+                    print("VIP chapter, using selenium")
+                    for i in range(1):
+                        print("Attempting to fetch chapter text, attempt", i + 1)
+                        try:
+                            chapter_text = selenium_utils.fetch_with_existing_driver_custom(
+                                login_result['driver'], 'https://' + target_url[index:], element_type="main", element_class="content", debug=False)['content']
+                            flag = True
+                            break
+                        except:
+                            print("Failed to fetch chapter text, retrying...")
+                    if (flag == False):
+                        print("Failed to fetch chapter text, quitting...")
+                        quit()
+                else:
+                    print("Public chapter")
+                answer = tl(chapter_text, last_chapter_summary)
 
-            #translate chapter
-            answer = tl(chapter_text, last_chapter_summary, glossary = manual_name_translation)
-            chapter_text = helpers.replace_with_dictionary(answer.translation, manual_name_translation, confident=True)
-            #get summary to use for next chapter
-            with dspy.context(lm=dspy.LM('openai/gpt-4o-mini')):
-                last_chapter_summary = dspy.Predict('chapter, last_chapter_summary -> summary')(chapter = chapter_text, last_chapter_summary = last_chapter_summary).summary
-            
-            #save translated chapter
-            title = dspy.Predict('prompt, title -> translation')(prompt="Please translate this title to English.", title=titles[i]).translation
-            with open("texts/inprogress_translations/" + name+"/translated/v"+str(1)+"c"+str(i)+"("+str(i)+")_"+helpers.sanitize_filename(title)+".txt", "w", encoding="utf-8") as text_file:
-                    text_file.write(chapter_text)
+                with dspy.context(lm=dspy.LM('openai/gpt-4o-mini')):
+                    last_chapter_summary = dspy.Predict('chapter -> summary')(chapter = answer.translation).summary
+
+                #chapter_text = replace_with_dictionary(answer.translation, manual_name_translation, confident=True)
+
+                with open("texts/inprogress_translations/" + name+"/translated/v"+str(vol)+"c"+str(chap)+"("+str(count)+")_"+helpers.sanitize_filename(title)+".txt", "w", encoding="utf-8") as text_file:
+                        text_file.write(chapter_text)
+                chap += 1
+                count += 1
 
         cost = sum([x['cost'] for x in lm.history if x['cost'] is not None])  # in USD, as calculated by LiteLLM for certain providers
         print("Cost:", cost)
@@ -319,7 +326,7 @@ def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translati
         print("❌ Browser was closed or session was lost.")
         print("   The scraping process was interrupted because the browser window was closed.")
         print("   You can restart the script to continue from where you left off.")
-        #print(f"   Technical details: {str(e)}")
+        print(f"   Technical details: {str(e)}")
     except WebDriverException as e:
         print("❌ Browser error occurred.")
         print("   The scraping process was interrupted due to a browser-related issue.")
@@ -333,7 +340,7 @@ def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translati
     except KeyboardInterrupt:
         print("\n❌ Scraping was interrupted by user (Ctrl+C).")
         print("   The process was manually stopped.")
-    except Exception as e:
+    '''except Exception as e:
         print("❌ An unexpected error occurred:")
         print(f"   {str(e)}")
-        print("   Scraping failed or was interrupted.")
+        print("   Scraping failed or was interrupted.")'''

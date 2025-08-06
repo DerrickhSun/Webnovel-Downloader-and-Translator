@@ -474,8 +474,9 @@ def combine_by_volume(directory_paths: List[str], series_name: str, debug: bool 
                 elif debug:
                     print(f"Skipping file with invalid format: {file_path.name}")
         
-        # Create output directory in the first input directory
-        output_dir = Path(directory_paths[0]) / "volumes"
+        # Create output directory in the parent of the first input directory
+        first_dir_path = Path(directory_paths[0])
+        output_dir = first_dir_path.parent / "volumes"
         output_dir.mkdir(exist_ok=True)
         
         created_files = []
@@ -1153,40 +1154,35 @@ def get_last_chapter_number(directory_path: str, debug: bool = False) -> int:
             print(f"Error getting last chapter number: {str(e)}")
         raise e
 
+def convert_to_volume(name: str, directory_path: str, debug: bool = False):
+    """
+    Converts a directory of text files into a volume structure.
+    
+    Args:
+        directory_path (str): Path to the directory containing text files
+    """
+    tl = directory_path+"/translated"
+    processed_files = add_chapter_headers_from_filename(tl, debug=debug)
+    replace_em_dashes_with_hyphens(tl, debug=debug)
+
+    print("producing volume")
+    processed_files = combine_by_volume([tl], name, debug=debug)
+
+    processed_files = remove_chapter_headers_from_content(tl, debug=debug)
+
+def complete_novel(directory_path: str, debug: bool = False):
+    #TODO: implement
+    
+    return
+
 if __name__ == "__main__":
     # Example usage
     try:
-        #directory = "Loner Outcast Vampire/translated"
-        # Split chapters example
-        #input_file = "sample.txt"
-        #output_dir = "chapters"
-        
-        #chapters = split_by_chapter_markers(input_file, output_dir, debug=True)
-        #print(f"\nSuccessfully split into {len(chapters)} chapters")
-        
-        # Remove chapter headers example
-        #processed_files = remove_chapter_headers("txtChapters", debug=True)
-        #print(f"\nSuccessfully processed {len(processed_files)} files")
-        
-        directory = "I Became a Member of My Favorite Group/translated"
-        
-        # Add volume information example
-        #processed_files = add_volume_info("txtChapters", debug=True)
-        #print(f"\nSuccessfully processed {len(processed_files)} files")
-
-        # Add chapter headers from filenames example
-        processed_files = add_chapter_headers_from_filename(directory, debug=True)
-        print(f"\nSuccessfully processed {len(processed_files)} files")
-        
-        replace_em_dashes_with_hyphens(directory, debug=True)      
-
-        # Combine files by volume example
-        processed_files = combine_by_volume([directory], "I Became a Member of My Favorite Group", debug=True)
-        print(f"\nSuccessfully created {len(processed_files)} volume files")
-        
-        # Remove chapter headers from content example
-        processed_files = remove_chapter_headers_from_content(directory, debug=True)
-        print(f"\nSuccessfully processed {len(processed_files)} files")
+        while True:
+            name = input("Enter the name of the volume: ")#"Former Hero Prefers Solo Play"
+            if name == "" or name == "exit":
+                break
+            convert_to_volume(name, "texts/finished_translations/"+name)
 
         
     except Exception as e:

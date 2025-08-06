@@ -16,6 +16,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 import undetected_chromedriver as uc
 from web_scraper import CONFIRMED_HEADERS
+from utils.selenium_utils import create_chrome_driver_with_auto_version
 
 def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
     """Open browser and wait for manual login - most reliable approach."""
@@ -51,7 +52,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
         'browser': 'ALL'
     })
     
-    driver = uc.Chrome(options=options)
+    driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
     
     try:
         # Enable network monitoring via CDP
@@ -72,7 +73,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
         # Handle any alerts before starting
         handle_alerts(driver, "before navigation")
         
-        driver.get("https://novelpia.com")
+        driver.get(url)
         
         # STEP 2: Wait for page to load
         try:
@@ -115,7 +116,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
                         print(f"   Current URL: {current_url}")
                     except:
                         print("   Could not get current URL")
-            
+            #TODO: add generalization for other sites
             # Check if we're back to novelpia.com (login successful)
             try:
                 current_url = driver.current_url

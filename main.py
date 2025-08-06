@@ -1,4 +1,4 @@
-import automated_login
+import utils.automated_login as automated_login
 import scrapers.helpers as helpers
 import text_utils
 import re
@@ -8,6 +8,7 @@ import dspy
 from dotenv import load_dotenv
 import os
 import scrapers.novelpiaScraper as novelpiaScraper
+import scrapers.qidianScraper as qidianScraper
 
 # Import Selenium exceptions for better error handling
 try:
@@ -24,9 +25,8 @@ except ImportError:
 
 load_dotenv()
 
-
-if __name__ == "__main__":
-    url = str(input("Novel name/url: "))#"theres no way a temp magical girl like me could be cute right"
+def download_novel():
+    url = str(input("Novel name/url: "))
 
     # Load dictionaries using dict_utils
     url_dict = dict_utils.load_dict('url_dict')
@@ -47,6 +47,7 @@ if __name__ == "__main__":
     name = "unrecognized"
     if url in name_dict.keys():
         name = name_dict[url]
+    #TODO: handle unrecognized names
     print("Title:", name)
 
     manual_name_translation = {}
@@ -55,8 +56,8 @@ if __name__ == "__main__":
         manual_name_translation = manual_name_translation_dict[url]
     
 
-    text_utils.ensure_directory_exists(name + "/translated")
-    text_utils.ensure_directory_exists(name + "/untranslated")
+    text_utils.ensure_directory_exists("texts/inprogress_translations/" + name + "/translated")
+    text_utils.ensure_directory_exists("texts/inprogress_translations/" + name + "/untranslated")
     
     pickup = bool(input("Pickup from where you left off? (y/n): ").lower().strip() == 'y')
     if pickup:
@@ -67,5 +68,17 @@ if __name__ == "__main__":
         end_chapter = 9999
     print("Starting from chapter", start_chapter)
 
-    novelpiaScraper.novelpia_scrape(url, name,start_chapter, end_chapter, manual_name_translation)
+    if "novelpia" in url:
+        novelpiaScraper.novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translation)
+    elif "qidian" in url:
+        qidianScraper.qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation)
+    else:
+        print("Unsupported site")
+    
+
+def manage_dict():
+    return False #TODO: implement text_utils
+
+if __name__ == "__main__":
+    download_novel()
     
