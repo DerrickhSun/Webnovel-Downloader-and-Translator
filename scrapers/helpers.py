@@ -1,8 +1,47 @@
 import re
 import shutil
 import string
-from typing import List, Dict
+from typing import List, Dict, Optional
 from pathlib import Path
+
+# Default language of each supported site (used to skip translation when target matches)
+SITE_DEFAULT_LANGUAGES: Dict[str, str] = {
+    "fsacg": "chinese",
+    "qidian": "chinese",
+    "novelpia": "korean",
+    "wattpad": "english",
+}
+
+# Target output language (currently only English; extend later for other targets)
+TARGET_LANGUAGE: str = "english"
+
+
+def get_site_from_url(url: str) -> Optional[str]:
+    """Detect which site a URL belongs to."""
+    url_lower = url.lower()
+    for site in SITE_DEFAULT_LANGUAGES:
+        if site in url_lower:
+            return site
+    return None
+
+
+def get_site_default_language(url: str) -> Optional[str]:
+    """Get the default language of the site for the given URL."""
+    site = get_site_from_url(url)
+    return SITE_DEFAULT_LANGUAGES.get(site) if site else None
+
+
+def needs_translation(url: str, target_language: Optional[str] = None) -> bool:
+    """
+    Return True if we need to translate (site default != target).
+    When target matches site default, we skip the translator.
+    """
+    target = target_language if target_language is not None else TARGET_LANGUAGE
+    default = get_site_default_language(url)
+    if default is None:
+        return True  # Unknown site: translate to be safe
+    return default.lower() != target.lower()
+
 
 def sanitize_filename(input_string: str) -> str:
     """

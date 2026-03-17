@@ -31,7 +31,7 @@ def _ensure_story_url(url: str) -> str:
     return url
 
 
-def wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translation=None):
+def wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translation=None, use_login=True):
     if manual_name_translation is None:
         manual_name_translation = {}
     try:
@@ -48,7 +48,10 @@ def wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translatio
                 if parts and parts[0].split("-")[0].isdigit():
                     story_base = "https://www.wattpad.com/story/" + parts[0]
 
-        login_result = automated_login.manual_login(url="https://www.wattpad.com/", debug=False)
+        if use_login:
+            login_result = automated_login.manual_login(url="https://www.wattpad.com/", debug=False)
+        else:
+            login_result = automated_login.get_driver_no_login(debug=False)
         driver = login_result["driver"]
 
         # Fetch story page: get chapter list from ul[aria-label="story-parts"]
@@ -94,20 +97,26 @@ def wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translatio
             ) as f:
                 f.write(chapter_text)
 
-            # Translate
-            answer = tl(chapter_text, last_chapter_summary, glossary=manual_name_translation)
-            chapter_text = helpers.replace_with_dictionary(
-                answer.translation, manual_name_translation, confident=True
-            )
-            with dspy.context(lm=dspy.LM("openai/gpt-4o-mini")):
-                last_chapter_summary = dspy.Predict("chapter, last_chapter_summary -> summary")(
-                    chapter=chapter_text, last_chapter_summary=last_chapter_summary
-                ).summary
-
-            title = dspy.Predict("prompt, title -> translation")(
-                prompt="Please translate this title to English.",
-                title=chap_result.get("page_info", {}).get("title", f"Chapter {i + 1}"),
-            ).translation
+            raw_title = chap_result.get("page_info", {}).get("title", f"Chapter {i + 1}")
+            if helpers.needs_translation(url):
+                answer = tl(chapter_text, last_chapter_summary, glossary=manual_name_translation)
+                chapter_text = helpers.replace_with_dictionary(
+                    answer.translation, manual_name_translation, confident=True
+                )
+                with dspy.context(lm=dspy.LM("openai/gpt-4o-mini")):
+                    last_chapter_summary = dspy.Predict("chapter, last_chapter_summary -> summary")(
+                        chapter=chapter_text, last_chapter_summary=last_chapter_summary
+                    ).summary
+                title = dspy.Predict("prompt, title -> translation")(
+                    prompt="Please translate this title to English.",
+                    title=raw_title,
+                ).translation
+            else:
+                chapter_text = helpers.replace_with_dictionary(
+                    chapter_text, manual_name_translation, confident=True
+                )
+                last_chapter_summary = ""
+                title = raw_title
             safe_title = helpers.sanitize_filename(title)
             with open(
                 f"texts/inprogress_translations/{name}/translated/v1c{i}({i + 1})_{safe_title}.txt",

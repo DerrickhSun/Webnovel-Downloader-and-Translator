@@ -250,14 +250,16 @@ def clean_novel_text_advanced(text, debug=False):
     return cleaned_text
 
 
-def qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation={}):
+def qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation={}, use_login=True):
     try:
         links = []
         titles = []
         last_chapter_summary = ""
 
-
-        login_result = automated_login.manual_login(url="https://www.qidian.com/", debug=False) 
+        if use_login:
+            login_result = automated_login.manual_login(url="https://www.qidian.com/", debug=False)
+        else:
+            login_result = automated_login.get_driver_no_login(debug=False) 
         #output = selenium_utils.fetch_with_existing_driver_div(login_result['driver'], url, div_class="page-link", debug=False)
 
         lis = selenium_utils.fetch_with_existing_driver_list(login_result['driver'], url, list_class="volume-chapters", parent_div_class="catalog-volume", debug=False)
@@ -290,7 +292,8 @@ def qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation
                 
                 title = selenium_utils.fetch_with_existing_driver_custom(
                     login_result['driver'], 'https://' + target_url[index:], element_type="h1", element_class="title", debug=False)['content']
-                title = dspy.Predict('prompt, title -> translation')(prompt="Please translate this title.", title = title).translation
+                if helpers.needs_translation(url):
+                    title = dspy.Predict('prompt, title -> translation')(prompt="Please translate this title.", title=title).translation
             
                 if not chapter_text:
                     flag = False
@@ -309,12 +312,14 @@ def qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation
                         quit()
                 else:
                     print("Public chapter")
-                answer = tl(chapter_text, last_chapter_summary)
-
-                with dspy.context(lm=dspy.LM('openai/gpt-4o-mini')):
-                    last_chapter_summary = dspy.Predict('chapter -> summary')(chapter = answer.translation).summary
-
-                #chapter_text = replace_with_dictionary(answer.translation, manual_name_translation, confident=True)
+                if helpers.needs_translation(url):
+                    answer = tl(chapter_text, last_chapter_summary)
+                    chapter_text = answer.translation
+                    with dspy.context(lm=dspy.LM('openai/gpt-4o-mini')):
+                        last_chapter_summary = dspy.Predict('chapter -> summary')(chapter=chapter_text).summary
+                else:
+                    last_chapter_summary = ""
+                chapter_text = helpers.replace_with_dictionary(chapter_text, manual_name_translation, confident=True)
 
                 with open("texts/inprogress_translations/" + name+"/translated/v"+str(vol)+"c"+str(chap)+"("+str(count)+")_"+helpers.sanitize_filename(title)+".txt", "w", encoding="utf-8") as text_file:
                         text_file.write(chapter_text)

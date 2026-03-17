@@ -69,12 +69,14 @@ def download_novel():
         end_chapter = 9999
     print("Starting from chapter", start_chapter)
 
+    use_login = bool(input("Login first? (y/n): ").lower().strip() == 'y')
+
     if "novelpia" in url:
-        novelpiaScraper.novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translation)
+        novelpiaScraper.novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translation, use_login=use_login)
     elif "qidian" in url:
-        qidianScraper.qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation)
+        qidianScraper.qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation, use_login=use_login)
     elif "wattpad" in url:
-        wattpadScraper.wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translation)
+        wattpadScraper.wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translation, use_login=use_login)
     else:
         print("Unsupported site")
     

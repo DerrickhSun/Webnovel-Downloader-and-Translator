@@ -249,15 +249,17 @@ def clean_novel_text_advanced(text, debug=False):
     return cleaned_text
 
 
-def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translation={}):
+def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translation={}, use_login=True):
     try:
         links = []
         titles = []
         last_chapter_summary = ""
         url_header = "https://novelpia.com/viewer/"
 
-
-        login_result = automated_login.manual_login(url="https://novelpia.com/", debug=False) 
+        if use_login:
+            login_result = automated_login.manual_login(url="https://novelpia.com/", debug=False)
+        else:
+            login_result = automated_login.get_driver_no_login(debug=False) 
         output = selenium_utils.fetch_with_existing_driver_div(login_result['driver'], url, div_class="page-link", debug=False)
 
 
@@ -301,15 +303,17 @@ def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translati
             with open("texts/inprogress_translations/" + name + "/untranslated/v"+str(1)+"c"+str(i)+"("+str(i)+")_"+".txt", "w", encoding="utf-8") as text_file:
                     text_file.write(chapter_text)
 
-            #translate chapter
-            answer = tl(chapter_text, last_chapter_summary, glossary = manual_name_translation)
-            chapter_text = helpers.replace_with_dictionary(answer.translation, manual_name_translation, confident=True)
-            #get summary to use for next chapter
-            with dspy.context(lm=dspy.LM('openai/gpt-4o-mini')):
-                last_chapter_summary = dspy.Predict('chapter, last_chapter_summary -> summary')(chapter = chapter_text, last_chapter_summary = last_chapter_summary).summary
-            
-            #save translated chapter
-            title = dspy.Predict('prompt, title -> translation')(prompt="Please translate this title to English.", title=titles[i]).translation
+            # translate chapter (skip if site default language matches target)
+            if helpers.needs_translation(url):
+                answer = tl(chapter_text, last_chapter_summary, glossary=manual_name_translation)
+                chapter_text = helpers.replace_with_dictionary(answer.translation, manual_name_translation, confident=True)
+                with dspy.context(lm=dspy.LM('openai/gpt-4o-mini')):
+                    last_chapter_summary = dspy.Predict('chapter, last_chapter_summary -> summary')(chapter=chapter_text, last_chapter_summary=last_chapter_summary).summary
+                title = dspy.Predict('prompt, title -> translation')(prompt="Please translate this title to English.", title=titles[i]).translation
+            else:
+                chapter_text = helpers.replace_with_dictionary(chapter_text, manual_name_translation, confident=True)
+                last_chapter_summary = ""
+                title = titles[i]
             with open("texts/inprogress_translations/" + name+"/translated/v"+str(1)+"c"+str(i)+"("+str(i)+")_"+helpers.sanitize_filename(title)+".txt", "w", encoding="utf-8") as text_file:
                     text_file.write(chapter_text)
 

@@ -17,6 +17,28 @@ from selenium.webdriver.common.keys import Keys
 from web_scraper import CONFIRMED_HEADERS
 from utils.selenium_utils import create_chrome_driver_with_auto_version
 
+
+def _make_chrome_options():
+    """Build Chrome options (shared by manual_login and get_driver_no_login)."""
+    options = Options()
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument(f"--user-agent={CONFIRMED_HEADERS['User-Agent']}")
+    options.add_argument(f"--accept-language={CONFIRMED_HEADERS['Accept-Language']}")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.set_capability('goog:loggingPrefs', {'performance': 'ALL', 'browser': 'ALL'})
+    return options
+
+
+def get_driver_no_login(debug=False):
+    """Create a Chrome driver without the login flow. Use when skipping login to navigate directly."""
+    options = _make_chrome_options()
+    driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
+    return {'driver': driver}
+
+
 def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
     """Open browser and wait for manual login - most reliable approach."""
     
@@ -26,7 +48,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
             alert = driver.switch_to.alert
             alert_text = alert.text
             if debug:
-                print(f"⚠️  Alert detected {context}: {alert_text}")
+                print(f"  Alert detected {context}: {alert_text}")
                 print("   Please handle the alert manually in the browser")
             # Don't dismiss - let user handle manually
             driver.switch_to.default_content()
@@ -34,23 +56,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
         except:
             return False
     
-    options = Options()
-    # Non-headless mode for manual interaction
-    # options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument(f"--user-agent={CONFIRMED_HEADERS['User-Agent']}")
-    options.add_argument(f"--accept-language={CONFIRMED_HEADERS['Accept-Language']}")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    
-    # Enable detailed logging
-    options.set_capability('goog:loggingPrefs', {
-        'performance': 'ALL',
-        'browser': 'ALL'
-    })
-    
+    options = _make_chrome_options()
     driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
     
     try:
@@ -90,7 +96,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
         if debug:
             print("Step 2: Page loaded successfully")
             print("Step 3: Waiting for manual login...")
-            print(f"⏰ You have {wait_time} seconds to complete the login process")
+            print(f"You have {wait_time} seconds to complete the login process")
             print("   - Click the user menu icon (top right)")
             print("   - Click 'Google Login' or '구글로 로그인'")
             print("   - Complete Google OAuth login")
