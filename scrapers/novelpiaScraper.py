@@ -2,7 +2,7 @@ import utils.automated_login as automated_login
 import scrapers.helpers as helpers
 import utils.selenium_utils as selenium_utils
 import re
-from dspyBot import Translator, NameCorrector
+from translators import Translator, NameCorrector
 import dspy
 from dotenv import load_dotenv
 import os
@@ -316,24 +316,24 @@ def novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translati
         cost = sum([x['cost'] for x in lm.history if x['cost'] is not None])  # in USD, as calculated by LiteLLM for certain providers
         print("Cost:", cost)
     except (NoSuchWindowException, SessionNotCreatedException) as e:
-        print("❌ Browser was closed or session was lost.")
+        print("ERROR: Browser was closed or session was lost.")
         print("   The scraping process was interrupted because the browser window was closed.")
         print("   You can restart the script to continue from where you left off.")
         #print(f"   Technical details: {str(e)}")
     except WebDriverException as e:
-        print("❌ Browser error occurred.")
+        print("ERROR: Browser error occurred.")
         print("   The scraping process was interrupted due to a browser-related issue.")
         print("   This might be due to the browser being closed or a connection problem.")
         #print(f"   Technical details: {str(e)}")
     except TimeoutException as e:
-        print("❌ Timeout error occurred.")
+        print("ERROR: Timeout error occurred.")
         print("   The scraping process was interrupted due to a timeout.")
         print("   This might be due to slow internet connection or website loading issues.")
         #print(f"   Technical details: {str(e)}")
     except KeyboardInterrupt:
-        print("\n❌ Scraping was interrupted by user (Ctrl+C).")
+        print("\nERROR: Scraping was interrupted by user (Ctrl+C).")
         print("   The process was manually stopped.")
     except Exception as e:
-        print("❌ An unexpected error occurred:")
+        print("ERROR: An unexpected error occurred:")
         print(f"   {str(e)}")
         print("   Scraping failed or was interrupted.")

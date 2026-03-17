@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# These are modules for translation
+
+# Main translator module
 class Translator(dspy.Module):
     def __init__(self, context=[]):
         self.respond = dspy.ChainOfThought('prompt, context, previous_chapter, glossary,script -> title, translation')

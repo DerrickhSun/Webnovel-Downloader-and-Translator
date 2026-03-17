@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+
 import text_utils
 
 # context_dict: {url: {character/term: description}}
@@ -7,12 +9,25 @@ import text_utils
 # url_dict: {title: url}
 # manual_name_translation_dict: {url: {character/term: translation}}
 
+DATA_DIR = Path("data")
+
+def _ensure_data_dir():
+    """Create the data directory if it does not exist."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
 def save_dict(dict, filename):
-    with open('data/' + filename + '.json', 'w') as f:
+    _ensure_data_dir()
+    path = DATA_DIR / (filename + ".json")
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(dict, f, indent=4)
 
 def load_dict(filename):
-    return json.load(open('data/' + filename + '.json'))
+    _ensure_data_dir()
+    path = DATA_DIR / (filename + ".json")
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
 
 def add_novel():
     context_dict = load_dict('context_dict')

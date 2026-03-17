@@ -2,13 +2,14 @@ import utils.automated_login as automated_login
 import scrapers.helpers as helpers
 import text_utils
 import re
-from dspyBot import Translator, NameCorrector
+from translators import Translator, NameCorrector
 import dict_utils
 import dspy
 from dotenv import load_dotenv
 import os
 import scrapers.novelpiaScraper as novelpiaScraper
 import scrapers.qidianScraper as qidianScraper
+import scrapers.wattpadScraper as wattpadScraper
 
 # Import Selenium exceptions for better error handling
 try:
@@ -72,6 +73,8 @@ def download_novel():
         novelpiaScraper.novelpia_scrape(url, name, start_chapter, end_chapter, manual_name_translation)
     elif "qidian" in url:
         qidianScraper.qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation)
+    elif "wattpad" in url:
+        wattpadScraper.wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translation)
     else:
         print("Unsupported site")
     

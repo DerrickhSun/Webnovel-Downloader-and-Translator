@@ -1403,12 +1403,12 @@ def fetch_main_content(url: str, main_id: str = None, main_class: str = None, de
             """Helper function to process main content consistently"""
             if not main_element:
                 if debug:
-                    print("❌ Main element is None")
+                    print("ERROR: Main element is None")
                 return None
             
             if debug:
-                print(f"🔍 Processing main element: {main_element.name} {main_element.attrs}")
-                print(f"🔍 Raw HTML length: {len(str(main_element))}")
+                print(f"DEBUG: Processing main element: {main_element.name} {main_element.attrs}")
+                print(f"DEBUG: Raw HTML length: {len(str(main_element))}")
             
             # Replace <br> tags with newlines
             for br in main_element.find_all(['br']):
@@ -1424,8 +1424,8 @@ def fetch_main_content(url: str, main_id: str = None, main_class: str = None, de
             content = main_element.get_text()
             
             if debug:
-                print(f"🔍 Raw text content length: {len(content)}")
-                print(f"🔍 Raw text content (first 200 chars): {repr(content[:200])}")
+                print(f"DEBUG: Raw text content length: {len(content)}")
+                print(f"DEBUG: Raw text content (first 200 chars): {repr(content[:200])}")
             
             # Clean up the text:
             # 1. Split into lines and strip each line
@@ -1434,8 +1434,8 @@ def fetch_main_content(url: str, main_id: str = None, main_class: str = None, de
             lines = [line.strip() for line in content.splitlines()]
             
             if debug:
-                print(f"🔍 Lines after stripping: {len(lines)}")
-                print(f"🔍 First few lines: {lines[:5]}")
+                print(f"DEBUG: Lines after stripping: {len(lines)}")
+                print(f"DEBUG: First few lines: {lines[:5]}")
             
             # Remove empty lines while preserving intentional paragraph breaks
             cleaned_lines = []
@@ -1449,25 +1449,25 @@ def fetch_main_content(url: str, main_id: str = None, main_class: str = None, de
                     prev_empty = True
             
             if debug:
-                print(f"🔍 Cleaned lines: {len(cleaned_lines)}")
-                print(f"🔍 First few cleaned lines: {cleaned_lines[:5]}")
+                print(f"DEBUG: Cleaned lines: {len(cleaned_lines)}")
+                print(f"DEBUG: First few cleaned lines: {cleaned_lines[:5]}")
             
             # Join lines with newlines
             content = '\n'.join(cleaned_lines)
             
             if debug:
-                print(f"🔍 Content after joining: {len(content)} chars")
-                print(f"🔍 Content (first 200 chars): {repr(content[:200])}")
+                print(f"DEBUG: Content after joining: {len(content)} chars")
+                print(f"DEBUG: Content (first 200 chars): {repr(content[:200])}")
             
             # Remove any leading/trailing whitespace while preserving internal formatting
             final_content = content.strip()
             
             if debug:
-                print(f"🔍 Final content length: {len(final_content)}")
+                print(f"DEBUG: Final content length: {len(final_content)}")
                 if final_content:
-                    print(f"🔍 Final content (first 200 chars): {repr(final_content[:200])}")
+                    print(f"DEBUG: Final content (first 200 chars): {repr(final_content[:200])}")
                 else:
-                    print("❌ Final content is empty after processing")
+                    print("ERROR: Final content is empty after processing")
             
             return final_content
         
@@ -1522,10 +1522,10 @@ def fetch_main_content(url: str, main_id: str = None, main_class: str = None, de
                 if content:
                     results.append(content)
                     if debug:
-                        print(f"✅ Processed main {i+1}: {len(content)} characters")
+                        print(f"SUCCESS: Processed main {i+1}: {len(content)} characters")
                 else:
                     if debug:
-                        print(f"❌ Main {i+1} returned no content after processing")
+                        print(f"ERROR: Main {i+1} returned no content after processing")
             
             if debug:
                 print(f"\nFinal results: {len(results)} non-empty contents")
@@ -2345,10 +2345,10 @@ def fetch_with_firefox_headers(url: str, div_id: str = None, div_class: str = No
         # Check for success
         if response.status_code == 200:
             if debug:
-                print("✅ Firefox headers request successful!")
+                print("SUCCESS: Firefox headers request successful!")
         else:
             if debug:
-                print(f"❌ Firefox headers request failed: {response.status_code}")
+                print(f"ERROR: Firefox headers request failed: {response.status_code}")
             return None
         
         # Parse HTML content
@@ -2401,9 +2401,9 @@ def fetch_with_firefox_headers(url: str, div_id: str = None, div_class: str = No
             if debug:
                 print(f"\nLooking for div with id: {div_id}")
                 if target_div:
-                    print("✅ Found target div!")
+                    print("SUCCESS: Found target div!")
                 else:
-                    print("❌ Target div not found.")
+                    print("ERROR: Target div not found.")
             
             return process_div_content(target_div)
             
@@ -2487,10 +2487,10 @@ def fetch_with_confirmed_headers(url: str, main_id: str = None, main_class: str 
         # Check for success
         if response.status_code == 200:
             if debug:
-                print("✅ Confirmed headers request successful!")
+                print("SUCCESS: Confirmed headers request successful!")
         else:
             if debug:
-                print(f"❌ Confirmed headers request failed: {response.status_code}")
+                print(f"ERROR: Confirmed headers request failed: {response.status_code}")
             return None
         
         # Parse HTML content
@@ -2500,12 +2500,12 @@ def fetch_with_confirmed_headers(url: str, main_id: str = None, main_class: str 
             """Helper function to process main content consistently"""
             if not main_element:
                 if debug:
-                    print("❌ Main element is None")
+                    print("ERROR: Main element is None")
                 return None
             
             if debug:
-                print(f"🔍 Processing main element: {main_element.name} {main_element.attrs}")
-                print(f"🔍 Raw HTML length: {len(str(main_element))}")
+                print(f"DEBUG: Processing main element: {main_element.name} {main_element.attrs}")
+                print(f"DEBUG: Raw HTML length: {len(str(main_element))}")
             
             # Replace <br> tags with newlines
             for br in main_element.find_all(['br']):
@@ -2521,8 +2521,8 @@ def fetch_with_confirmed_headers(url: str, main_id: str = None, main_class: str 
             content = main_element.get_text()
             
             if debug:
-                print(f"🔍 Raw text content length: {len(content)}")
-                print(f"🔍 Raw text content (first 200 chars): {repr(content[:200])}")
+                print(f"DEBUG: Raw text content length: {len(content)}")
+                print(f"DEBUG: Raw text content (first 200 chars): {repr(content[:200])}")
             
             # Clean up the text:
             # 1. Split into lines and strip each line
@@ -2531,8 +2531,8 @@ def fetch_with_confirmed_headers(url: str, main_id: str = None, main_class: str 
             lines = [line.strip() for line in content.splitlines()]
             
             if debug:
-                print(f"🔍 Lines after stripping: {len(lines)}")
-                print(f"🔍 First few lines: {lines[:5]}")
+                print(f"DEBUG: Lines after stripping: {len(lines)}")
+                print(f"DEBUG: First few lines: {lines[:5]}")
             
             # Remove empty lines while preserving intentional paragraph breaks
             cleaned_lines = []
@@ -2546,25 +2546,25 @@ def fetch_with_confirmed_headers(url: str, main_id: str = None, main_class: str 
                     prev_empty = True
             
             if debug:
-                print(f"🔍 Cleaned lines: {len(cleaned_lines)}")
-                print(f"🔍 First few cleaned lines: {cleaned_lines[:5]}")
+                print(f"DEBUG: Cleaned lines: {len(cleaned_lines)}")
+                print(f"DEBUG: First few cleaned lines: {cleaned_lines[:5]}")
             
             # Join lines with newlines
             content = '\n'.join(cleaned_lines)
             
             if debug:
-                print(f"🔍 Content after joining: {len(content)} chars")
-                print(f"🔍 Content (first 200 chars): {repr(content[:200])}")
+                print(f"DEBUG: Content after joining: {len(content)} chars")
+                print(f"DEBUG: Content (first 200 chars): {repr(content[:200])}")
             
             # Remove any leading/trailing whitespace while preserving internal formatting
             final_content = content.strip()
             
             if debug:
-                print(f"🔍 Final content length: {len(final_content)}")
+                print(f"DEBUG: Final content length: {len(final_content)}")
                 if final_content:
-                    print(f"🔍 Final content (first 200 chars): {repr(final_content[:200])}")
+                    print(f"DEBUG: Final content (first 200 chars): {repr(final_content[:200])}")
                 else:
-                    print("❌ Final content is empty after processing")
+                    print("ERROR: Final content is empty after processing")
             
             return final_content
         
@@ -2575,9 +2575,9 @@ def fetch_with_confirmed_headers(url: str, main_id: str = None, main_class: str 
             if debug:
                 print(f"\nLooking for main with id: {main_id}")
                 if target_main:
-                    print("✅ Found target main!")
+                    print("SUCCESS: Found target main!")
                 else:
-                    print("❌ Target main not found.")
+                    print("ERROR: Target main not found.")
             
             return process_main_content(target_main)
             
@@ -2608,10 +2608,10 @@ def fetch_with_confirmed_headers(url: str, main_id: str = None, main_class: str 
                 if content:
                     results.append(content)
                     if debug:
-                        print(f"✅ Processed main {i+1}: {len(content)} characters")
+                        print(f"SUCCESS: Processed main {i+1}: {len(content)} characters")
                 else:
                     if debug:
-                        print(f"❌ Main {i+1} returned no content after processing")
+                        print(f"ERROR: Main {i+1} returned no content after processing")
             
             if debug:
                 print(f"\nFinal results: {len(results)} non-empty contents")
@@ -2688,10 +2688,10 @@ def fetch_h1_with_confirmed_headers(url: str, h1_id: str = None, h1_class: str =
         # Check for success
         if response.status_code == 200:
             if debug:
-                print("✅ Confirmed headers request successful!")
+                print("SUCCESS: Confirmed headers request successful!")
         else:
             if debug:
-                print(f"❌ Confirmed headers request failed: {response.status_code}")
+                print(f"ERROR: Confirmed headers request failed: {response.status_code}")
             return None
         
         # Parse HTML content
@@ -2701,12 +2701,12 @@ def fetch_h1_with_confirmed_headers(url: str, h1_id: str = None, h1_class: str =
             """Helper function to process h1 content consistently"""
             if not h1_element:
                 if debug:
-                    print("❌ H1 element is None")
+                    print("ERROR: H1 element is None")
                 return None
             
             if debug:
-                print(f"🔍 Processing h1 element: {h1_element.name} {h1_element.attrs}")
-                print(f"🔍 Raw HTML length: {len(str(h1_element))}")
+                print(f"DEBUG: Processing h1 element: {h1_element.name} {h1_element.attrs}")
+                print(f"DEBUG: Raw HTML length: {len(str(h1_element))}")
             
             # Replace <br> tags with newlines
             for br in h1_element.find_all(['br']):
@@ -2716,8 +2716,8 @@ def fetch_h1_with_confirmed_headers(url: str, h1_id: str = None, h1_class: str =
             content = h1_element.get_text()
             
             if debug:
-                print(f"🔍 Raw text content length: {len(content)}")
-                print(f"🔍 Raw text content (first 200 chars): {repr(content[:200])}")
+                print(f"DEBUG: Raw text content length: {len(content)}")
+                print(f"DEBUG: Raw text content (first 200 chars): {repr(content[:200])}")
             
             # Clean up the text:
             # 1. Split into lines and strip each line
@@ -2726,8 +2726,8 @@ def fetch_h1_with_confirmed_headers(url: str, h1_id: str = None, h1_class: str =
             lines = [line.strip() for line in content.splitlines()]
             
             if debug:
-                print(f"🔍 Lines after stripping: {len(lines)}")
-                print(f"🔍 First few lines: {lines[:5]}")
+                print(f"DEBUG: Lines after stripping: {len(lines)}")
+                print(f"DEBUG: First few lines: {lines[:5]}")
             
             # Remove empty lines while preserving intentional paragraph breaks
             cleaned_lines = []
@@ -2741,25 +2741,25 @@ def fetch_h1_with_confirmed_headers(url: str, h1_id: str = None, h1_class: str =
                     prev_empty = True
             
             if debug:
-                print(f"🔍 Cleaned lines: {len(cleaned_lines)}")
-                print(f"🔍 First few cleaned lines: {cleaned_lines[:5]}")
+                print(f"DEBUG: Cleaned lines: {len(cleaned_lines)}")
+                print(f"DEBUG: First few cleaned lines: {cleaned_lines[:5]}")
             
             # Join lines with newlines
             content = '\n'.join(cleaned_lines)
             
             if debug:
-                print(f"🔍 Content after joining: {len(content)} chars")
-                print(f"🔍 Content (first 200 chars): {repr(content[:200])}")
+                print(f"DEBUG: Content after joining: {len(content)} chars")
+                print(f"DEBUG: Content (first 200 chars): {repr(content[:200])}")
             
             # Remove any leading/trailing whitespace while preserving internal formatting
             final_content = content.strip()
             
             if debug:
-                print(f"🔍 Final content length: {len(final_content)}")
+                print(f"DEBUG: Final content length: {len(final_content)}")
                 if final_content:
-                    print(f"🔍 Final content (first 200 chars): {repr(final_content[:200])}")
+                    print(f"DEBUG: Final content (first 200 chars): {repr(final_content[:200])}")
                 else:
-                    print("❌ Final content is empty after processing")
+                    print("ERROR: Final content is empty after processing")
             
             return final_content
         
@@ -2770,9 +2770,9 @@ def fetch_h1_with_confirmed_headers(url: str, h1_id: str = None, h1_class: str =
             if debug:
                 print(f"\nLooking for h1 with id: {h1_id}")
                 if target_h1:
-                    print("✅ Found target h1!")
+                    print("SUCCESS: Found target h1!")
                 else:
-                    print("❌ Target h1 not found.")
+                    print("ERROR: Target h1 not found.")
                     # Show all h1 elements with IDs
                     all_h1s = soup.find_all('h1', id=True)
                     if all_h1s:
@@ -2809,10 +2809,10 @@ def fetch_h1_with_confirmed_headers(url: str, h1_id: str = None, h1_class: str =
                 if content:
                     results.append(content)
                     if debug:
-                        print(f"✅ Processed h1 {i+1}: {len(content)} characters")
+                        print(f"SUCCESS: Processed h1 {i+1}: {len(content)} characters")
                 else:
                     if debug:
-                        print(f"❌ H1 {i+1} returned no content after processing")
+                        print(f"ERROR: H1 {i+1} returned no content after processing")
             
             if debug:
                 print(f"\nFinal results: {len(results)} non-empty contents")
@@ -2908,7 +2908,7 @@ def make_request_with_connection_retry(session, url: str, headers: dict, max_ret
             # If we get a successful response, return it
             if response.status_code == 200:
                 if debug:
-                    print("✅ Connection retry successful!")
+                    print("SUCCESS: Connection retry successful!")
                 return response
             
             # Handle 202 responses (WAF challenges)
@@ -3012,10 +3012,10 @@ def fetch_with_robust_connection(url: str, main_id: str = None, main_class: str 
         # Check for success
         if response.status_code == 200:
             if debug:
-                print("✅ Robust connection request successful!")
+                print("SUCCESS: Robust connection request successful!")
         else:
             if debug:
-                print(f"❌ Robust connection request failed: {response.status_code}")
+                print(f"ERROR: Robust connection request failed: {response.status_code}")
             return None
         
         # Parse HTML content
@@ -3025,12 +3025,12 @@ def fetch_with_robust_connection(url: str, main_id: str = None, main_class: str 
             """Helper function to process main content consistently"""
             if not main_element:
                 if debug:
-                    print("❌ Main element is None")
+                    print("ERROR: Main element is None")
                 return None
             
             if debug:
-                print(f"🔍 Processing main element: {main_element.name} {main_element.attrs}")
-                print(f"🔍 Raw HTML length: {len(str(main_element))}")
+                print(f"DEBUG: Processing main element: {main_element.name} {main_element.attrs}")
+                print(f"DEBUG: Raw HTML length: {len(str(main_element))}")
             
             # Replace <br> tags with newlines
             for br in main_element.find_all(['br']):
@@ -3046,8 +3046,8 @@ def fetch_with_robust_connection(url: str, main_id: str = None, main_class: str 
             content = main_element.get_text()
             
             if debug:
-                print(f"🔍 Raw text content length: {len(content)}")
-                print(f"🔍 Raw text content (first 200 chars): {repr(content[:200])}")
+                print(f"DEBUG: Raw text content length: {len(content)}")
+                print(f"DEBUG: Raw text content (first 200 chars): {repr(content[:200])}")
             
             # Clean up the text:
             # 1. Split into lines and strip each line
@@ -3056,8 +3056,8 @@ def fetch_with_robust_connection(url: str, main_id: str = None, main_class: str 
             lines = [line.strip() for line in content.splitlines()]
             
             if debug:
-                print(f"🔍 Lines after stripping: {len(lines)}")
-                print(f"🔍 First few lines: {lines[:5]}")
+                print(f"DEBUG: Lines after stripping: {len(lines)}")
+                print(f"DEBUG: First few lines: {lines[:5]}")
             
             # Remove empty lines while preserving intentional paragraph breaks
             cleaned_lines = []
@@ -3071,25 +3071,25 @@ def fetch_with_robust_connection(url: str, main_id: str = None, main_class: str 
                     prev_empty = True
             
             if debug:
-                print(f"🔍 Cleaned lines: {len(cleaned_lines)}")
-                print(f"🔍 First few cleaned lines: {cleaned_lines[:5]}")
+                print(f"DEBUG: Cleaned lines: {len(cleaned_lines)}")
+                print(f"DEBUG: First few cleaned lines: {cleaned_lines[:5]}")
             
             # Join lines with newlines
             content = '\n'.join(cleaned_lines)
             
             if debug:
-                print(f"🔍 Content after joining: {len(content)} chars")
-                print(f"🔍 Content (first 200 chars): {repr(content[:200])}")
+                print(f"DEBUG: Content after joining: {len(content)} chars")
+                print(f"DEBUG: Content (first 200 chars): {repr(content[:200])}")
             
             # Remove any leading/trailing whitespace while preserving internal formatting
             final_content = content.strip()
             
             if debug:
-                print(f"🔍 Final content length: {len(final_content)}")
+                print(f"DEBUG: Final content length: {len(final_content)}")
                 if final_content:
-                    print(f"🔍 Final content (first 200 chars): {repr(final_content[:200])}")
+                    print(f"DEBUG: Final content (first 200 chars): {repr(final_content[:200])}")
                 else:
-                    print("❌ Final content is empty after processing")
+                    print("ERROR: Final content is empty after processing")
             
             return final_content
         
@@ -3100,9 +3100,9 @@ def fetch_with_robust_connection(url: str, main_id: str = None, main_class: str 
             if debug:
                 print(f"\nLooking for main with id: {main_id}")
                 if target_main:
-                    print("✅ Found target main!")
+                    print("SUCCESS: Found target main!")
                 else:
-                    print("❌ Target main not found.")
+                    print("ERROR: Target main not found.")
             
             return process_main_content(target_main)
             
@@ -3133,10 +3133,10 @@ def fetch_with_robust_connection(url: str, main_id: str = None, main_class: str 
                 if content:
                     results.append(content)
                     if debug:
-                        print(f"✅ Processed main {i+1}: {len(content)} characters")
+                        print(f"SUCCESS: Processed main {i+1}: {len(content)} characters")
                 else:
                     if debug:
-                        print(f"❌ Main {i+1} returned no content after processing")
+                        print(f"ERROR: Main {i+1} returned no content after processing")
             
             if debug:
                 print(f"\nFinal results: {len(results)} non-empty contents")

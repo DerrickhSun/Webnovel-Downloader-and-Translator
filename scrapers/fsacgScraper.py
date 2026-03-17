@@ -1,7 +1,14 @@
+"""FSACG scraper - handles fsacg.com novel scraping (including VIP image chapters)."""
+import sys
+from pathlib import Path
+
+# Ensure project root is on path when run as python scrapers/fsacgScraper.py
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import dspy
 import web_scraper
 import requests
-from dspyBot import Translator, NameCorrector
+from translators import Translator, NameCorrector
 import dict_utils
 from PIL import Image
 import os

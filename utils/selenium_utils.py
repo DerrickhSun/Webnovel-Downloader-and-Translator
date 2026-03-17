@@ -26,14 +26,6 @@ except ImportError:
     SELENIUM_AVAILABLE = False
     print("Selenium not available. Install with: pip install selenium")
 
-# Try to import undetected-chromedriver for better anti-detection
-try:
-    import undetected_chromedriver as uc
-    UNDETECTED_AVAILABLE = True
-except ImportError:
-    UNDETECTED_AVAILABLE = False
-    print("Undetected ChromeDriver not available. Install with: pip install undetected-chromedriver")
-
 def get_chrome_version():
     """
     Get the current Chrome browser version.
@@ -77,76 +69,39 @@ def create_chrome_driver_with_auto_version(options=None, debug=True):
     Returns:
         Chrome driver instance
     """
-    if not UNDETECTED_AVAILABLE:
-        raise ImportError("Undetected ChromeDriver is not available. Install with: pip install undetected-chromedriver")
-    
-    if debug:
-        print("🔍 Setting up Chrome driver with automatic version compatibility...")
-    
-    # Get Chrome version
-    chrome_version = get_chrome_version()
-    if chrome_version and debug:
-        print(f"🔍 Detected Chrome version: {chrome_version}")
-    
-    try:
-        # Method 1: Try with version specification
-        if chrome_version:
-            # Extract major version (e.g., "138" from "138.0.7204.184")
-            major_version = chrome_version.split('.')[0]
-            if debug:
-                print(f"🔍 Using ChromeDriver for major version: {major_version}")
-            
-            driver = uc.Chrome(options=options, version_main=int(major_version))
-            if debug:
-                print("✅ ChromeDriver created successfully with version specification")
-            return driver
-    except Exception as e:
-        if debug:
-            print(f"⚠️  Failed to create driver with version specification: {e}")
-    
-    try:
-        # Method 2: Try without version specification (let undetected-chromedriver handle it)
-        if debug:
-            print("🔍 Trying ChromeDriver without version specification...")
-        
-        driver = uc.Chrome(options=options)
-        if debug:
-            print("✅ ChromeDriver created successfully without version specification")
-        return driver
-    except Exception as e:
-        if debug:
-            print(f"⚠️  Failed to create driver without version specification: {e}")
-    
-    try:
-        # Method 3: Try with use_subprocess=True (more stable)
-        if debug:
-            print("🔍 Trying ChromeDriver with subprocess mode...")
-        
-        driver = uc.Chrome(options=options, use_subprocess=True)
-        if debug:
-            print("✅ ChromeDriver created successfully with subprocess mode")
-        return driver
-    except Exception as e:
-        if debug:
-            print(f"⚠️  Failed to create driver with subprocess mode: {e}")
-    
-    # If all methods fail, provide helpful error message
-    error_msg = f"""
-❌ Failed to create ChromeDriver. This could be due to:
+    if not SELENIUM_AVAILABLE:
+        raise ImportError("Selenium is not available. Install with: pip install selenium")
 
+    if debug:
+        print("🔍 Setting up Chrome driver with Selenium...")
+
+    # Modern Selenium can manage ChromeDriver automatically via Selenium Manager.
+    try:
+        driver = webdriver.Chrome(options=options)
+        if debug:
+            print("✅ ChromeDriver created successfully with Selenium")
+        return driver
+    except Exception as e:
+        # If creation fails, surface a helpful error
+        chrome_version = get_chrome_version()
+        error_msg = f"""
+❌ Failed to create ChromeDriver via Selenium.
+
+This could be due to:
 1. Chrome browser not installed or not in PATH
-2. ChromeDriver version mismatch
-3. Permission issues
+2. Selenium Manager unable to download/manage ChromeDriver
+3. Permission or network issues
 
 Troubleshooting steps:
 1. Make sure Chrome browser is installed and up to date
-2. Try updating undetected-chromedriver: pip install --upgrade undetected-chromedriver
-3. Try manually downloading ChromeDriver from: https://chromedriver.chromium.org/
+2. Ensure you have a recent selenium version (e.g. pip install -U selenium)
+3. If problems persist, try manually downloading ChromeDriver from: https://chromedriver.chromium.org/
 4. Check if Chrome is running and close all instances
 
 Chrome version detected: {chrome_version or 'Unknown'}
+Original error: {e}
 """
-    raise RuntimeError(error_msg)
+        raise RuntimeError(error_msg)
 
 # The following global variables must be imported from web_scraper.py:
 # - CONFIRMED_HEADERS
@@ -159,12 +114,8 @@ Chrome version detected: {chrome_version or 'Unknown'}
 def fetch_with_exact_headers(url: str, CONFIRMED_HEADERS: dict, main_id: str = None, main_class: str = None, 
                             wait_time: int = 5, timeout: int = 30, debug: bool = True) -> Optional[Union[str, List[str]]]:
     """
-    Fetches content using undetected-chromedriver with exact headers.
-    This leverages undetected-chromedriver's built-in anti-detection while ensuring exact header matching.
+    Fetches content using a standard Selenium Chrome driver with exact headers.
     """
-    if not UNDETECTED_AVAILABLE:
-        raise ImportError("Undetected ChromeDriver is not available. Install with: pip install undetected-chromedriver")
-    
     if debug:
         print(f"\n=== Fetching with Exact Headers (Undetected Chrome) ===")
         print(f"URL: {url}")
@@ -186,8 +137,8 @@ def fetch_with_exact_headers(url: str, CONFIRMED_HEADERS: dict, main_id: str = N
 
     driver = None
     try:
-        # Set up undetected Chrome options
-        options = uc.ChromeOptions()
+        # Set up Chrome options
+        options = Options()
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -200,9 +151,6 @@ def fetch_with_exact_headers(url: str, CONFIRMED_HEADERS: dict, main_id: str = N
         # Add language preference
         options.add_argument(f"--accept-language={CONFIRMED_HEADERS['Accept-Language']}")
         
-        # Additional undetected-chromedriver specific options
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        
         # Disable various Chrome features that might be detected
         options.add_argument("--disable-web-security")
         options.add_argument("--allow-running-insecure-content")
@@ -213,11 +161,11 @@ def fetch_with_exact_headers(url: str, CONFIRMED_HEADERS: dict, main_id: str = N
         options.add_argument("--disable-javascript")  # We'll re-enable this after setup
         
         if debug:
-            print("Setting up undetected Chrome driver with exact headers...")
+            print("Setting up Chrome driver with exact headers...")
             print(f"User-Agent: {CONFIRMED_HEADERS['User-Agent']}")
             print(f"Accept-Language: {CONFIRMED_HEADERS['Accept-Language']}")
         
-        # Initialize the undetected driver
+        # Initialize the driver
         driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
         
         # Re-enable JavaScript after driver initialization
@@ -867,7 +815,7 @@ def fetch_with_exact_headers_preserve_cookies(url: str, CONFIRMED_HEADERS: dict,
                                             wait_time: int = 5, timeout: int = 30, debug: bool = True,
                                             preserve_cookies: List[str] = None) -> Optional[Union[str, List[str]]]:
     """
-    Fetches content using undetected-chromedriver with exact headers and cookie preservation.
+    Fetches content using a standard Selenium Chrome driver with exact headers and cookie preservation.
     This prevents the website from modifying specific cookies that are critical for authentication.
     
     Args:
@@ -882,9 +830,6 @@ def fetch_with_exact_headers_preserve_cookies(url: str, CONFIRMED_HEADERS: dict,
     Returns:
         Optional[Union[str, List[str]]]: The fetched content
     """
-    if not UNDETECTED_AVAILABLE:
-        raise ImportError("Undetected ChromeDriver is not available. Install with: pip install undetected-chromedriver")
-    
     if debug:
         print(f"\n=== Fetching with Exact Headers (Cookie Preservation) ===")
         print(f"URL: {url}")
@@ -917,8 +862,8 @@ def fetch_with_exact_headers_preserve_cookies(url: str, CONFIRMED_HEADERS: dict,
 
     driver = None
     try:
-        # Set up undetected Chrome options
-        options = uc.ChromeOptions()
+        # Set up Chrome options
+        options = Options()
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -931,9 +876,6 @@ def fetch_with_exact_headers_preserve_cookies(url: str, CONFIRMED_HEADERS: dict,
         # Add language preference
         options.add_argument(f"--accept-language={CONFIRMED_HEADERS['Accept-Language']}")
         
-        # Additional undetected-chromedriver specific options
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        
         # Disable various Chrome features that might be detected
         options.add_argument("--disable-web-security")
         options.add_argument("--allow-running-insecure-content")
@@ -944,11 +886,11 @@ def fetch_with_exact_headers_preserve_cookies(url: str, CONFIRMED_HEADERS: dict,
         options.add_argument("--disable-javascript")  # We'll re-enable this after setup
         
         if debug:
-            print("Setting up undetected Chrome driver with cookie preservation...")
+            print("Setting up Chrome driver with cookie preservation...")
             print(f"User-Agent: {CONFIRMED_HEADERS['User-Agent']}")
             print(f"Accept-Language: {CONFIRMED_HEADERS['Accept-Language']}")
         
-        # Initialize the undetected driver
+        # Initialize the driver
         driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
         
         # Re-enable JavaScript after driver initialization
@@ -1686,6 +1628,133 @@ def fetch_with_existing_driver_custom(driver, url: str, element_type: str, eleme
         timeout=timeout,
         debug=debug
     )
+
+
+def fetch_with_existing_driver_css(driver, url: str, css_selector: str,
+                                   wait_time: int = 5, timeout: int = 30, debug: bool = True) -> Optional[dict]:
+    """
+    Fetches content from an element matched by a CSS selector (e.g. aria-label) using an existing driver.
+    Useful for sites that use aria-label instead of id/class (e.g. Wattpad ul[aria-label="story-parts"]).
+
+    Args:
+        driver: Existing WebDriver instance
+        url (str): URL to fetch
+        css_selector (str): CSS selector for the element (e.g. 'ul[aria-label="story-parts"]')
+        wait_time (int): Time to wait for JavaScript rendering
+        timeout (int): Timeout for element waiting
+        debug (bool): If True, prints debug information
+
+    Returns:
+        Optional[dict]: Dictionary containing:
+            - 'content': Extracted text content (str)
+            - 'urls': List of href URLs from list items (only for ul/ol; empty list otherwise)
+            - 'elements': List of Selenium WebElement objects
+            - 'soup_elements': List of BeautifulSoup element objects
+            - 'page_info': Dictionary with page title, URL, etc.
+            - 'success': Boolean indicating if fetch was successful
+    """
+    if debug:
+        print(f"\n=== Fetching by CSS selector with existing driver ===")
+        print(f"URL: {url}")
+        print(f"CSS selector: {css_selector}")
+
+    try:
+        result = urlparse(url)
+        if not all([result.scheme, result.netloc]):
+            raise ValueError("Invalid URL format")
+    except Exception as e:
+        raise ValueError(f"Invalid URL: {str(e)}")
+
+    page_info = {'title': '', 'current_url': url, 'page_source_length': 0}
+    try:
+        time.sleep(random.uniform(1, 3))
+        if debug:
+            print("Navigating to target URL...")
+        driver.get(url)
+        time.sleep(random.uniform(2, 5))
+        simulate_human_behavior(driver, debug)
+
+        page_info = {
+            'title': driver.title,
+            'current_url': driver.current_url,
+            'page_source_length': len(driver.page_source),
+        }
+
+        if debug:
+            print(f"Waiting {wait_time}s for JavaScript, then for selector: {css_selector}")
+        time.sleep(wait_time)
+        wait = WebDriverWait(driver, timeout)
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, 'html.parser')
+        target = soup.select_one(css_selector)
+
+        if not target:
+            if debug:
+                print(f"❌ No element found for selector: {css_selector}")
+            return {
+                'content': None,
+                'urls': [],
+                'elements': [],
+                'soup_elements': [],
+                'page_info': page_info,
+                'success': False,
+            }
+
+        if target.name in ('ul', 'ol'):
+            result = process_list_content(target, debug)
+            content = result['content']
+            urls = result.get('urls', [])
+        elif target.name == 'pre':
+            # pre with p subelements: extract each p's text, join with paragraph breaks
+            p_tags = target.find_all('p')
+            if p_tags:
+                content = '\n\n'.join(p.get_text().strip() for p in p_tags if p.get_text().strip())
+            else:
+                content = target.get_text()
+            urls = []
+        else:
+            for br in target.find_all(['br']):
+                br.replace_with('\n')
+            content = target.get_text()
+            lines = [line.strip() for line in content.splitlines()]
+            cleaned = []
+            prev_empty = False
+            for line in lines:
+                if line:
+                    cleaned.append(line)
+                    prev_empty = False
+                elif not prev_empty:
+                    cleaned.append('')
+                    prev_empty = True
+            content = '\n'.join(cleaned).strip()
+            urls = []
+
+        return {
+            'content': content,
+            'urls': urls,
+            'elements': [],
+            'soup_elements': [target],
+            'page_info': page_info,
+            'success': content is not None,
+        }
+    except TimeoutException as e:
+        if debug:
+            print(f"❌ Timeout waiting for selector: {css_selector} — {e}")
+        return {
+            'content': None,
+            'urls': [],
+            'elements': [],
+            'soup_elements': [],
+            'page_info': page_info,
+            'success': False,
+        }
+    except Exception as e:
+        if debug:
+            print(f"Error in fetch_with_existing_driver_css: {str(e)}")
+        raise
+
 
 def process_list_content(list_element, debug: bool = True):
     """Special processing for list elements to preserve list structure"""

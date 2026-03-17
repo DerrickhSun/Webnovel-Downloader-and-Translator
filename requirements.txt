@@ -1,4 +1,7 @@
-requests==2.31.0
-beautifulsoup4==4.12.2 
-selenium==4.11.0
-undetected-chromedriver>=3.5.0
+requests>=2.31.0
+beautifulsoup4>=4.12.2
+selenium>=4.11.0
+python-dotenv>=1.0.0
+openai>=1.0.0
+Pillow>=10.0.0
+dspy>=2.0.0

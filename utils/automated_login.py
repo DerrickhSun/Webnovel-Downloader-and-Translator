@@ -14,7 +14,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
-import undetected_chromedriver as uc
 from web_scraper import CONFIRMED_HEADERS
 from utils.selenium_utils import create_chrome_driver_with_auto_version
 
@@ -35,7 +34,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
         except:
             return False
     
-    options = uc.ChromeOptions()
+    options = Options()
     # Non-headless mode for manual interaction
     # options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -148,7 +147,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
         
     except Exception as e:
         if debug:
-            print(f"❌ Error during manual login: {e}")
+            print(f"ERROR: Error during manual login: {e}")
         # Don't close the browser on error - let user decide
         return {
             'error': str(e),

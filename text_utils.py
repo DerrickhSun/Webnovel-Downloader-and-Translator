@@ -942,13 +942,13 @@ def replace_with_dictionary_in_directory(directory_path: str, replacement_dict: 
                     print(f"  Final length: {len(modified_content)} chars")
                     print(f"  Replacements made: {file_replacements}")
                     if file_replacements > 0:
-                        print(f"  ✅ File processed successfully")
+                        print(f"  SUCCESS: File processed successfully")
                     else:
-                        print(f"  ⚠️  No replacements found in this file")
+                        print(f"  WARNING: No replacements found in this file")
                 
             except Exception as e:
                 if debug:
-                    print(f"  ❌ Error processing {file_path.name}: {str(e)}")
+                    print(f"  ERROR: Error processing {file_path.name}: {str(e)}")
                 # Continue with other files even if one fails
         
         if debug:
@@ -1002,12 +1002,12 @@ def replace_with_dictionary_in_files(file_paths: List[str], replacement_dict: Di
             # Check if file exists
             if not file_path.exists():
                 if debug:
-                    print(f"  ❌ File not found: {file_path}")
+                    print(f"  ERROR: File not found: {file_path}")
                 continue
             
             if not file_path.is_file():
                 if debug:
-                    print(f"  ❌ Path is not a file: {file_path}")
+                    print(f"  ERROR: Path is not a file: {file_path}")
                 continue
             
             try:
@@ -1050,13 +1050,13 @@ def replace_with_dictionary_in_files(file_paths: List[str], replacement_dict: Di
                     print(f"  Final length: {len(modified_content)} chars")
                     print(f"  Replacements made: {file_replacements}")
                     if file_replacements > 0:
-                        print(f"  ✅ File processed successfully")
+                        print(f"  SUCCESS: File processed successfully")
                     else:
-                        print(f"  ⚠️  No replacements found in this file")
+                        print(f"  WARNING: No replacements found in this file")
                 
             except Exception as e:
                 if debug:
-                    print(f"  ❌ Error processing {file_path.name}: {str(e)}")
+                    print(f"  ERROR: Error processing {file_path.name}: {str(e)}")
                 # Continue with other files even if one fails
         
         if debug:
