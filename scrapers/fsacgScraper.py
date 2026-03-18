@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import dspy
-import web_scraper
+from web_scraper import analyze_image
 import requests
 from translators import Translator, NameCorrector
 import dict_utils
@@ -65,7 +65,7 @@ def scrape_fsacg_vip_chapter(url):
     global last_chapter_summary, name
     try:
         web_scraper.download_image(img_url, "temp/vipImage"+str(count)+".png", debug=False)
-        answer = web_scraper.analyze_image("temp/vipImage"+str(count)+".png", 
+        answer = analyze_image("temp/vipImage"+str(count)+".png",
             brightness = brightness_factor,
             contrast = contrast_factor,
             split = True,
