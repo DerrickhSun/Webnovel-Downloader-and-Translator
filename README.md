@@ -18,7 +18,7 @@ python -m pip install -r requirements.txt
 
 Translation features use **DSPy / OpenAI**; configure credentials via **`.env`** (loaded by `main.py` with `python-dotenv`) as required by your setup.
 
-Selenium-based scrapers need **Google Chrome** installed; the login flow may open a real browser window.
+**Download novel** needs **Google Chrome** installed if you answer **yes** to **Login first?** (the browser opens so you can sign in; every supported site uses that same prompt).
 
 ---
 
@@ -30,17 +30,26 @@ Run from the project root so imports resolve:
 python main.py
 ```
 
-This starts **`download_novel()`**, which interactively:
+You get a short menu:
+
+| Choice | What it does |
+|--------|----------------|
+| **1) Download novel** | Scrape and translate (see below). |
+| **2) Update library** | Same as `dict_utils.py`: **add** or **remove** titles/URLs in `data/`. |
+| **3) Package novel** | Same as `text_utils.py` CLI: build volumes from `texts/finished_translations/<name>/`. |
+| **4) Exit** | Quit. |
+
+You can type the number (**1**–**4**) or a phrase like **`download novel`**, **`update library`**, **`package novel`**.
+
+### Download novel (option 1)
 
 1. Asks for a **novel name or URL** (names are resolved via `dict_utils` / `url_dict` when present).
 2. Ensures output folders exist under `texts/inprogress_translations/<title>/`.
 3. Asks whether to **pick up** from the last translated chapter.
-4. Asks whether to **log in** in the browser first (needed for paywalled or session-gated content on some sites).
-5. Dispatches to the scraper whose URL matches **`novelpia`**, **`qidian`**, **`wattpad`**, or **`fsacg`** in the URL string.
+4. Asks whether to **log in** in Chrome first (recommended when content is paywalled or needs a session).
+5. Picks the scraper from the URL: **`novelpia`**, **`qidian`**, **`wattpad`**, or **`sfacg` / `fsacg`** (SFACG novels use `*.sfacg.com` URLs) must appear in the URL string (same idea as the other sites).
 
-If the URL does not match any of those, you will see **“Unsupported site”**.
-
-**FSACG** also uses the **“Login first?”** prompt: if you choose yes, Chrome opens on the same host as your novel URL; after you sign in, session cookies are copied into the HTTP client and the browser closes before downloading chapters.
+If nothing matches, you see **“Unsupported site”**.
 
 ---
 
@@ -58,6 +67,8 @@ Enter an operation:
 
 - **`add`** — prompts for novel title and URL, updates `url_dict` and `name_dict` (and re-saves the other dict files).
 - **`remove`** — prompts for a normalized title and removes it from `url_dict` if found.
+
+The same operations are available from **`main.py`** → **Update library** (option 2).
 
 In code you can use:
 
@@ -78,7 +89,7 @@ Relevant keys (see comments in `dict_utils.py`):
 
 ## Where outputs go
 
-### From `main.py` (Novelpia, Qidian, Wattpad, FSACG)
+### From **Download novel** (all supported sites)
 
 Chapters are written under:
 
@@ -88,8 +99,8 @@ texts/inprogress_translations/<name>/
 └── translated/     # translated `.txt` files
 ```
 
-- **Novelpia**, **Wattpad**, and **FSACG** (VIP OCR path) write **untranslated** and/or **translated** files there.
-- **Qidian** currently writes **translated** chapters only under that tree (see `scrapers/qidianScraper.py`).
+- **Novelpia**, **Wattpad**, **FSACG**, and **Qidian** all use this layout for **translated** output.
+- **Novelpia**, **Wattpad**, and **FSACG** may also write **untranslated** files depending on chapter type; **Qidian** currently writes **translated** only (see `scrapers/qidianScraper.py`).
 
 `<name>` comes from `name_dict` for the novel URL when set; otherwise it may show as **`unrecognized`** until you add the novel in `dict_utils`.
 
@@ -106,9 +117,9 @@ All updates go to **`data/*.json`** (created on first use).
 | **Novelpia** | `novelpia` | `scrapers/novelpiaScraper.py` |
 | **Qidian** | `qidian` | `scrapers/qidianScraper.py` |
 | **Wattpad** | `wattpad` | `scrapers/wattpadScraper.py` |
-| **FSACG** | `fsacg` | `scrapers/fsacgScraper.py` |
+| **FSACG / SFACG** | `sfacg` or `fsacg` in URL | `scrapers/fsacgScraper.py` |
 
-**FSACG** uses the same **manual Chrome login** as the other sites when you answer **yes** to “Login first?”; cookies from the browser are applied to `web_scraper`’s `requests` session (and saved via `cookies.json` like other flows that use the session manager). Answer **no** only if you do not need an authenticated session.
+All four sites use the same **Download novel** flow in `main.py`: pickup, **Login first?** (optional Chrome sign-in), then scraping. Answer **no** to **Login first?** only if you do not need an authenticated session for that title.
 
 ---
 

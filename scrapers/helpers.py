@@ -19,7 +19,12 @@ TARGET_LANGUAGE: str = "english"
 def get_site_from_url(url: str) -> Optional[str]:
     """Detect which site a URL belongs to."""
     url_lower = url.lower()
+    # Real SFACG URLs use sfacg.com; "fsacg" may appear in shorthand or old links.
+    if "sfacg" in url_lower or "fsacg" in url_lower:
+        return "fsacg"
     for site in SITE_DEFAULT_LANGUAGES:
+        if site == "fsacg":
+            continue
         if site in url_lower:
             return site
     return None

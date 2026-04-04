@@ -1,4 +1,4 @@
-"""FSACG scraper - handles fsacg.com novel scraping (including VIP image chapters)."""
+"""FSACG/SFACG scraper - handles book.sfacg.com (etc.) novel scraping, including VIP image chapters."""
 import os
 from urllib.parse import urlparse
 
