@@ -46,6 +46,7 @@ def fsacg_scrape(
     end_chapter,
     manual_name_translation=None,
     use_login=True,
+    browser_driver=None,
 ):
     """
     Fetch and translate an FSACG novel: manual browser login (optional), then HTTP
@@ -54,29 +55,36 @@ def fsacg_scrape(
     start_chapter / end_chapter are linear indices matching filenames: v* c* (n)_
     where n is the running chapter counter (1-based). Use start_chapter=0 to begin at 1.
 
-    If use_login is True, opens Chrome on the novel site's origin so you can sign in;
-    cookies are then synced into web_scraper.session_manager. If False, opens Chrome
-    without the wait loop (same as other scrapers) — you are unlikely to be logged in.
+    If use_login is True, opens Chrome on the novel site's origin so you can sign in
+    (or navigates browser_driver there if passed from the app UI). Cookies are then
+    synced into web_scraper.session_manager. If False and no browser_driver, opens
+    Chrome without the wait loop — you are unlikely to be logged in.
     """
     if manual_name_translation is None:
         manual_name_translation = {}
 
     login_url = _login_url_from_novel_url(url)
     driver = None
+    reuse_app_browser = browser_driver is not None
     try:
         if use_login:
             login_result = automated_login.manual_login(
-                url=login_url, wait_time=120, debug=False
+                url=login_url,
+                wait_time=120,
+                debug=False,
+                existing_driver=browser_driver,
             )
         else:
-            login_result = automated_login.get_driver_no_login(debug=False)
+            login_result = automated_login.get_driver_no_login(
+                debug=False, existing_driver=browser_driver
+            )
         driver = login_result.get("driver")
         if not driver:
             print("Could not start browser for FSACG login.")
             return
         _apply_driver_cookies_to_web_scraper_session(driver)
     finally:
-        if driver:
+        if driver and not reuse_app_browser:
             try:
                 driver.quit()
             except Exception:

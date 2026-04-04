@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import text_utils
@@ -29,51 +30,73 @@ def load_dict(filename):
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
-def add_novel():
-    context_dict = load_dict('context_dict')
-    name_dict = load_dict('name_dict')
-    volume_dict = load_dict('volume_dict')
-    url_dict = load_dict('url_dict')
-    manual_name_translation_dict = load_dict('manual_name_translation_dict')
+def add_novel(
+    *,
+    read_str: Callable[[str], str] | None = None,
+    read_yes_no: Callable[[str], bool] | None = None,
+    echo: Callable[[str], None] | None = None,
+) -> None:
+    context_dict = load_dict("context_dict")
+    name_dict = load_dict("name_dict")
+    volume_dict = load_dict("volume_dict")
+    url_dict = load_dict("url_dict")
+    manual_name_translation_dict = load_dict("manual_name_translation_dict")
 
-    title = str(input("Novel name: "))
+    line_in = read_str or input
+
+    def yes_no(prompt: str) -> bool:
+        if read_yes_no is not None:
+            return read_yes_no(prompt)
+        return input(prompt).lower().strip() == "y"
+
+    log = echo or print
+
+    title = str(line_in("Novel name: "))
     title = text_utils.normalize_text(title)
-    url = str(input("Novel url: "))
+    url = str(line_in("Novel url: "))
     if url in url_dict.keys():
-        set_output = bool(input("Set this name as main name? (y/n): ").lower().strip() == 'y')
+        set_output = yes_no("Set this name as main name? (y/n): ")
         if set_output:
             name_dict[url] = title
     else:
-        print("New novel")
+        log("New novel")
         name_dict[url] = title
-    
+
     if title in url_dict.keys():
-        warn = bool(input("This title already exists. Overwrite? (y/n): ").lower().strip() == 'y')
+        warn = yes_no("This title already exists. Overwrite? (y/n): ")
         if warn:
             url_dict[title] = url
     else:
         url_dict[title] = url
 
-    save_dict(context_dict, 'context_dict')
-    save_dict(name_dict, 'name_dict')
-    save_dict(volume_dict, 'volume_dict')
-    save_dict(url_dict, 'url_dict')
-    save_dict(manual_name_translation_dict, 'manual_name_translation_dict')
+    save_dict(context_dict, "context_dict")
+    save_dict(name_dict, "name_dict")
+    save_dict(volume_dict, "volume_dict")
+    save_dict(url_dict, "url_dict")
+    save_dict(manual_name_translation_dict, "manual_name_translation_dict")
 
-def remove_title():
-    context_dict = load_dict('context_dict')
-    name_dict = load_dict('name_dict')
-    volume_dict = load_dict('volume_dict')
-    url_dict = load_dict('url_dict')
-    manual_name_translation_dict = load_dict('manual_name_translation_dict')
 
-    title = str(input("Title: "))
+def remove_title(
+    *,
+    read_str: Callable[[str], str] | None = None,
+    echo: Callable[[str], None] | None = None,
+) -> None:
+    context_dict = load_dict("context_dict")
+    name_dict = load_dict("name_dict")
+    volume_dict = load_dict("volume_dict")
+    url_dict = load_dict("url_dict")
+    manual_name_translation_dict = load_dict("manual_name_translation_dict")
+
+    line_in = read_str or input
+    log = echo or print
+
+    title = str(line_in("Title: "))
     title = text_utils.normalize_text(title)
 
     if title in url_dict.keys():
         del url_dict[title]
     else:
-        print("Title not found")
+        log("Title not found")
     
     save_dict(context_dict, 'context_dict')
     save_dict(name_dict, 'name_dict')

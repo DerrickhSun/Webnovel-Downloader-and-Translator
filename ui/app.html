@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Webnovel Downloader</title>
+    <style>
+      :root {
+        --bg: #12141a;
+        --surface: #1a1d26;
+        --border: #2d3344;
+        --text: #e8eaef;
+        --muted: #8b93a7;
+        --accent: #c9a227;
+        --accent-dim: #8f7320;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: radial-gradient(ellipse 80% 50% at 50% -20%, #2a2438 0%, var(--bg) 55%);
+        color: var(--text);
+        padding: 1.5rem;
+      }
+
+      .is-hidden {
+        display: none !important;
+      }
+
+      main {
+        max-width: 28rem;
+        margin: 0 auto;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.75rem 1.5rem;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+      }
+
+      h1 {
+        margin: 0 0 0.25rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 0 0 1.5rem;
+        font-size: 0.8125rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      button,
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+        font: inherit;
+        font-size: 0.9375rem;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+      }
+
+      button.menu-btn {
+        width: 100%;
+        text-align: left;
+        justify-content: flex-start;
+      }
+
+      button:hover,
+      .btn:hover {
+        border-color: var(--accent-dim);
+        background: rgba(201, 162, 39, 0.08);
+      }
+
+      button:focus-visible,
+      .btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .key {
+        flex-shrink: 0;
+        width: 1.5rem;
+        height: 1.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--accent);
+        border: 1px solid var(--accent-dim);
+        border-radius: 4px;
+        background: rgba(201, 162, 39, 0.12);
+      }
+
+      .label {
+        flex: 1;
+      }
+
+      .hint {
+        margin: 1.25rem 0 0;
+        font-size: 0.75rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      #menu-root[data-choice] .status {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.8125rem;
+        color: var(--accent);
+      }
+
+      .status:empty {
+        display: none;
+      }
+
+      /* Prompt layer */
+      #screen-prompt {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 100;
+      }
+
+      .prompt-card {
+        width: 100%;
+        max-width: 26rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+      }
+
+      #prompt-message {
+        margin: 0 0 0.75rem;
+        font-size: 1rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
+      #prompt-detail {
+        margin: 0 0 1rem;
+        font-size: 0.8125rem;
+        color: var(--muted);
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
+      #prompt-detail:empty {
+        display: none;
+      }
+
+      #prompt-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      #prompt-body input[type="text"] {
+        width: 100%;
+        padding: 0.65rem 0.75rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        font: inherit;
+        font-size: 0.9375rem;
+      }
+
+      .prompt-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.25rem;
+      }
+
+      .prompt-actions button {
+        flex: 1;
+        min-width: 6rem;
+      }
+
+      .btn-secondary {
+        border-color: var(--muted);
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="screen-menu">
+      <main>
+        <h1>Webnovel Downloader and Translator</h1>
+        <p class="subtitle">Pick an action below, or use keys <kbd>1</kbd>–<kbd>4</kbd>.</p>
+
+        <div id="menu-root" role="group" aria-label="Main menu">
+          <div class="actions">
+            <button type="button" class="menu-btn" id="btn-download" data-choice="download">
+              <span class="key" aria-hidden="true">1</span>
+              <span class="label">Download novel</span>
+            </button>
+            <button type="button" class="menu-btn" id="btn-update-library" data-choice="update_library">
+              <span class="key" aria-hidden="true">2</span>
+              <span class="label">Update library</span>
+            </button>
+            <button type="button" class="menu-btn" id="btn-package" data-choice="package">
+              <span class="key" aria-hidden="true">3</span>
+              <span class="label">Package novel</span>
+            </button>
+            <button type="button" class="menu-btn" id="btn-exit" data-choice="exit">
+              <span class="key" aria-hidden="true">4</span>
+              <span class="label">Exit</span>
+            </button>
+          </div>
+          <p class="status" id="status" aria-live="polite"></p>
+        </div>
+
+        <p class="hint">While a dialog is open, number keys apply to the dialog only.</p>
+      </main>
+    </div>
+
+    <div id="screen-prompt" class="is-hidden" aria-modal="true" role="dialog">
+      <div class="prompt-card">
+        <p id="prompt-message"></p>
+        <p id="prompt-detail"></p>
+        <div id="prompt-body"></div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        window.__menuPresses = [];
+        window.__promptResult = { done: false, value: null };
+        window.__wizardActive = false;
+
+        var menuRoot = document.getElementById("menu-root");
+        var statusEl = document.getElementById("status");
+        var screenMenu = document.getElementById("screen-menu");
+        var screenPrompt = document.getElementById("screen-prompt");
+        var promptMessage = document.getElementById("prompt-message");
+        var promptDetail = document.getElementById("prompt-detail");
+        var promptBody = document.getElementById("prompt-body");
+
+        var labels = {
+          download: "Download novel",
+          update_library: "Update library",
+          package: "Package novel",
+          exit: "Exit",
+        };
+
+        function menuVisible() {
+          return !screenMenu.classList.contains("is-hidden");
+        }
+
+        function choose(value) {
+          window.__menuPresses.push(value);
+          menuRoot.setAttribute("data-choice", value);
+          statusEl.textContent = "Selected: " + (labels[value] || value);
+        }
+
+        menuRoot.querySelectorAll("button[data-choice]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            choose(btn.getAttribute("data-choice"));
+          });
+        });
+
+        var keys = { "1": "download", "2": "update_library", "3": "package", "4": "exit" };
+        document.addEventListener("keydown", function (e) {
+          if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+          if (!menuVisible()) return;
+          var v = keys[e.key];
+          if (v) {
+            e.preventDefault();
+            choose(v);
+            var id =
+              v === "download"
+                ? "btn-download"
+                : v === "update_library"
+                  ? "btn-update-library"
+                  : v === "package"
+                    ? "btn-package"
+                    : "btn-exit";
+            var b = document.getElementById(id);
+            if (b) b.focus();
+          }
+        });
+
+        function openPrompt() {
+          if (!window.__wizardActive) {
+            screenMenu.classList.add("is-hidden");
+          }
+          screenPrompt.classList.remove("is-hidden");
+          window.__promptResult = { done: false, value: null };
+        }
+
+        function finishPrompt(value) {
+          window.__promptResult = { done: true, value: value };
+          screenPrompt.classList.add("is-hidden");
+          if (!window.__wizardActive) {
+            screenMenu.classList.remove("is-hidden");
+          }
+          promptBody.innerHTML = "";
+          promptDetail.textContent = "";
+        }
+
+        function setPromptContent(message, detail) {
+          promptMessage.textContent = message || "";
+          promptDetail.textContent = detail || "";
+          promptBody.innerHTML = "";
+        }
+
+        window.App = {
+          beginWizard: function () {
+            window.__wizardActive = true;
+            screenMenu.classList.add("is-hidden");
+            screenPrompt.classList.add("is-hidden");
+            promptBody.innerHTML = "";
+            promptDetail.textContent = "";
+            promptMessage.textContent = "";
+            window.__promptResult = { done: false, value: null };
+          },
+
+          endWizard: function () {
+            window.__wizardActive = false;
+            screenPrompt.classList.add("is-hidden");
+            screenMenu.classList.remove("is-hidden");
+            promptBody.innerHTML = "";
+            promptDetail.textContent = "";
+            promptMessage.textContent = "";
+            window.__promptResult = { done: false, value: null };
+          },
+
+          resetMainMenu: function () {
+            window.__wizardActive = false;
+            menuRoot.removeAttribute("data-choice");
+            statusEl.textContent = "";
+            window.__menuPresses = [];
+            screenPrompt.classList.add("is-hidden");
+            screenMenu.classList.remove("is-hidden");
+            promptBody.innerHTML = "";
+            promptDetail.textContent = "";
+            promptMessage.textContent = "";
+            window.__promptResult = { done: false, value: null };
+          },
+
+          showTextPrompt: function (message, placeholder, defaultValue, detail) {
+            openPrompt();
+            setPromptContent(message, detail);
+            var input = document.createElement("input");
+            input.type = "text";
+            input.placeholder = placeholder || "";
+            input.value = defaultValue || "";
+            input.id = "prompt-text-input";
+            var row = document.createElement("div");
+            row.className = "prompt-actions";
+            var ok = document.createElement("button");
+            ok.type = "button";
+            ok.textContent = "OK";
+            var cancel = document.createElement("button");
+            cancel.type = "button";
+            cancel.className = "btn-secondary";
+            cancel.textContent = "Cancel";
+            function submit() {
+              finishPrompt(input.value);
+            }
+            ok.addEventListener("click", submit);
+            cancel.addEventListener("click", function () {
+              finishPrompt(null);
+            });
+            input.addEventListener("keydown", function (e) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submit();
+              }
+            });
+            row.appendChild(ok);
+            row.appendChild(cancel);
+            promptBody.appendChild(input);
+            promptBody.appendChild(row);
+            setTimeout(function () {
+              input.focus();
+              input.select();
+            }, 0);
+          },
+
+          showYesNo: function (message, detail) {
+            openPrompt();
+            setPromptContent(message, detail);
+            var row = document.createElement("div");
+            row.className = "prompt-actions";
+            [["yes", "Yes"], ["no", "No"]].forEach(function (pair) {
+              var b = document.createElement("button");
+              b.type = "button";
+              b.textContent = pair[1];
+              b.addEventListener("click", function () {
+                finishPrompt(pair[0]);
+              });
+              row.appendChild(b);
+            });
+            promptBody.appendChild(row);
+          },
+
+          showChoices: function (message, detail, choices) {
+            openPrompt();
+            setPromptContent(message, detail);
+            var wrap = document.createElement("div");
+            wrap.className = "actions";
+            choices.forEach(function (c) {
+              var b = document.createElement("button");
+              b.type = "button";
+              b.textContent = c.label;
+              b.addEventListener("click", function () {
+                finishPrompt(c.id);
+              });
+              wrap.appendChild(b);
+            });
+            var cancel = document.createElement("button");
+            cancel.type = "button";
+            cancel.className = "btn-secondary";
+            cancel.style.marginTop = "0.5rem";
+            cancel.textContent = "Cancel";
+            cancel.addEventListener("click", function () {
+              finishPrompt(null);
+            });
+            promptBody.appendChild(wrap);
+            promptBody.appendChild(cancel);
+          },
+        };
+      })();
+    </script>
+  </body>
+</html>

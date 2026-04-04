@@ -18,8 +18,18 @@ from web_scraper import CONFIRMED_HEADERS
 from utils.selenium_utils import create_chrome_driver_with_auto_version
 
 
+def shared_chrome_options() -> Options:
+    """
+    Chrome flags used for manual login, scrapers, and the local HTML app UI.
+
+    Matches the terminal login path so Google and other sites see the same profile
+    (notably --disable-blink-features=AutomationControlled and consistent UA).
+    """
+    return _make_chrome_options()
+
+
 def _make_chrome_options():
-    """Build Chrome options (shared by manual_login and get_driver_no_login)."""
+    """Build Chrome options (shared by manual_login, get_driver_no_login, app UI)."""
     options = Options()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
@@ -32,16 +42,22 @@ def _make_chrome_options():
     return options
 
 
-def get_driver_no_login(debug=False):
-    """Create a Chrome driver without the login flow. Use when skipping login to navigate directly."""
+def get_driver_no_login(debug=False, existing_driver=None):
+    """Create a Chrome driver without the login flow, or reuse one from the app UI."""
+    if existing_driver is not None:
+        return {"driver": existing_driver}
     options = _make_chrome_options()
     driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
-    return {'driver': driver}
+    return {"driver": driver}
 
 
-def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
-    """Open browser and wait for manual login - most reliable approach."""
-    
+def manual_login(url="https://novelpia.com/", wait_time=60, debug=True, existing_driver=None):
+    """
+    Open browser and wait for manual login - most reliable approach.
+
+    If existing_driver is set (e.g. the Selenium window used for the local HTML UI),
+    navigates that window to url instead of starting a new Chrome instance.
+    """
     def handle_alerts(driver, context=""):
         """Helper function to handle any open alerts."""
         try:
@@ -53,16 +69,22 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
             # Don't dismiss - let user handle manually
             driver.switch_to.default_content()
             return True
-        except:
+        except Exception:
             return False
-    
-    options = _make_chrome_options()
-    driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
-    
+
+    if existing_driver is not None:
+        driver = existing_driver
+    else:
+        options = _make_chrome_options()
+        driver = create_chrome_driver_with_auto_version(options=options, debug=debug)
+
     try:
-        # Enable network monitoring via CDP
-        driver.execute_cdp_cmd('Network.enable', {})
-        driver.execute_cdp_cmd('Performance.enable', {})
+        # Enable network monitoring via CDP (may fail on some sessions; non-fatal)
+        try:
+            driver.execute_cdp_cmd("Network.enable", {})
+            driver.execute_cdp_cmd("Performance.enable", {})
+        except Exception:
+            pass
         
         if debug:
             print("🔐 MANUAL LOGIN PROCESS")
@@ -85,7 +107,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
-        except:
+        except Exception:
             # Handle alerts that might prevent page load
             handle_alerts(driver, "during page load")
             # Try again
@@ -113,13 +135,13 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
                 try:
                     current_url = driver.current_url
                     print(f"   Current URL: {current_url}")
-                except:
+                except Exception:
                     # Handle alerts that might prevent URL access
                     handle_alerts(driver, "while checking URL")
                     try:
                         current_url = driver.current_url
                         print(f"   Current URL: {current_url}")
-                    except:
+                    except Exception:
                         print("   Could not get current URL")
             #TODO: add generalization for other sites
             # Check if we're back to novelpia.com (login successful)
@@ -131,7 +153,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
                     if debug:
                         print("✅ Detected return to novelpia.com - login may be successful!")
                     break
-            except:
+            except Exception:
                 # Handle alerts that might prevent URL access
                 handle_alerts(driver, "while checking login status")
             
@@ -149,10 +171,7 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
         if debug:
             print(f"ERROR: Error during manual login: {e}")
         # Don't close the browser on error - let user decide
-        return {
-            'error': str(e),
-            'driver': driver
-        }
+        return {"error": str(e), "driver": driver}
 
 
 if __name__ == "__main__":
