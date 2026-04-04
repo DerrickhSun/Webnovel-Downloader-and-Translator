@@ -250,16 +250,30 @@ def clean_novel_text_advanced(text, debug=False):
     return cleaned_text
 
 
-def qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation={}, use_login=True):
+def qidian_scrape(
+    url,
+    name,
+    start_chapter,
+    end_chapter,
+    manual_name_translation=None,
+    use_login=True,
+    browser_driver=None,
+):
+    if manual_name_translation is None:
+        manual_name_translation = {}
     try:
         links = []
         titles = []
         last_chapter_summary = ""
 
         if use_login:
-            login_result = automated_login.manual_login(url="https://www.qidian.com/", debug=False)
+            login_result = automated_login.manual_login(
+                url="https://www.qidian.com/", debug=False, existing_driver=browser_driver
+            )
         else:
-            login_result = automated_login.get_driver_no_login(debug=False) 
+            login_result = automated_login.get_driver_no_login(
+                debug=False, existing_driver=browser_driver
+            )
         #output = selenium_utils.fetch_with_existing_driver_div(login_result['driver'], url, div_class="page-link", debug=False)
 
         lis = selenium_utils.fetch_with_existing_driver_list(login_result['driver'], url, list_class="volume-chapters", parent_div_class="catalog-volume", debug=False)

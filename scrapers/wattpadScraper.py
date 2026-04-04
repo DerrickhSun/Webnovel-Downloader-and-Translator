@@ -31,7 +31,15 @@ def _ensure_story_url(url: str) -> str:
     return url
 
 
-def wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translation=None, use_login=True):
+def wattpad_scrape(
+    url,
+    name,
+    start_chapter,
+    end_chapter,
+    manual_name_translation=None,
+    use_login=True,
+    browser_driver=None,
+):
     if manual_name_translation is None:
         manual_name_translation = {}
     try:
@@ -49,9 +57,13 @@ def wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translatio
                     story_base = "https://www.wattpad.com/story/" + parts[0]
 
         if use_login:
-            login_result = automated_login.manual_login(url="https://www.wattpad.com/", debug=False)
+            login_result = automated_login.manual_login(
+                url="https://www.wattpad.com/", debug=False, existing_driver=browser_driver
+            )
         else:
-            login_result = automated_login.get_driver_no_login(debug=False)
+            login_result = automated_login.get_driver_no_login(
+                debug=False, existing_driver=browser_driver
+            )
         driver = login_result["driver"]
 
         # Fetch story page: get chapter list from ul[aria-label="story-parts"]
