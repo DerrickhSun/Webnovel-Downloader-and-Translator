@@ -10,6 +10,7 @@ import os
 import scrapers.novelpiaScraper as novelpiaScraper
 import scrapers.qidianScraper as qidianScraper
 import scrapers.wattpadScraper as wattpadScraper
+import scrapers.fsacgScraper as fsacgScraper
 
 # Import Selenium exceptions for better error handling
 try:
@@ -62,7 +63,9 @@ def download_novel():
     
     pickup = bool(input("Pickup from where you left off? (y/n): ").lower().strip() == 'y')
     if pickup:
-        start_chapter = text_utils.get_last_chapter_number(name + "/translated", debug=False) + 1
+        start_chapter = text_utils.get_last_chapter_number(
+            "texts/inprogress_translations/" + name + "/translated", debug=False
+        ) + 1
         end_chapter = 9999
     else:
         start_chapter = 0
@@ -77,6 +80,10 @@ def download_novel():
         qidianScraper.qidian_scrape(url, name, start_chapter, end_chapter, manual_name_translation, use_login=use_login)
     elif "wattpad" in url:
         wattpadScraper.wattpad_scrape(url, name, start_chapter, end_chapter, manual_name_translation, use_login=use_login)
+    elif "fsacg" in url:
+        fsacgScraper.fsacg_scrape(
+            url, name, start_chapter, end_chapter, manual_name_translation, use_login=use_login
+        )
     else:
         print("Unsupported site")
     

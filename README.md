@@ -16,8 +16,6 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-The app also uses **`text_utils`** (imported by `main.py` and `dict_utils.py`). If imports fail, ensure `text_utils.py` is on your Python path (for example, run from a layout where it sits next to this project, or set `PYTHONPATH` accordingly).
-
 Translation features use **DSPy / OpenAI**; configure credentials via **`.env`** (loaded by `main.py` with `python-dotenv`) as required by your setup.
 
 Selenium-based scrapers need **Google Chrome** installed; the login flow may open a real browser window.
@@ -38,9 +36,11 @@ This starts **`download_novel()`**, which interactively:
 2. Ensures output folders exist under `texts/inprogress_translations/<title>/`.
 3. Asks whether to **pick up** from the last translated chapter.
 4. Asks whether to **log in** in the browser first (needed for paywalled or session-gated content on some sites).
-5. Dispatches to the scraper whose URL matches **`novelpia`**, **`qidian`**, or **`wattpad`** in the URL string.
+5. Dispatches to the scraper whose URL matches **`novelpia`**, **`qidian`**, **`wattpad`**, or **`fsacg`** in the URL string.
 
 If the URL does not match any of those, you will see **“Unsupported site”**.
+
+**FSACG** also uses the **“Login first?”** prompt: if you choose yes, Chrome opens on the same host as your novel URL; after you sign in, session cookies are copied into the HTTP client and the browser closes before downloading chapters.
 
 ---
 
@@ -78,7 +78,7 @@ Relevant keys (see comments in `dict_utils.py`):
 
 ## Where outputs go
 
-### From `main.py` (Novelpia, Qidian, Wattpad)
+### From `main.py` (Novelpia, Qidian, Wattpad, FSACG)
 
 Chapters are written under:
 
@@ -88,7 +88,7 @@ texts/inprogress_translations/<name>/
 └── translated/     # translated `.txt` files
 ```
 
-- **Novelpia** and **Wattpad** write both **untranslated** and **translated** files there.
+- **Novelpia**, **Wattpad**, and **FSACG** (VIP OCR path) write **untranslated** and/or **translated** files there.
 - **Qidian** currently writes **translated** chapters only under that tree (see `scrapers/qidianScraper.py`).
 
 `<name>` comes from `name_dict` for the novel URL when set; otherwise it may show as **`unrecognized`** until you add the novel in `dict_utils`.
@@ -106,8 +106,9 @@ All updates go to **`data/*.json`** (created on first use).
 | **Novelpia** | `novelpia` | `scrapers/novelpiaScraper.py` |
 | **Qidian** | `qidian` | `scrapers/qidianScraper.py` |
 | **Wattpad** | `wattpad` | `scrapers/wattpadScraper.py` |
+| **FSACG** | `fsacg` | `scrapers/fsacgScraper.py` |
 
-**FSACG** (`scrapers/fsacgScraper.py`) is a separate script and is **not** wired into `main.py` today.
+**FSACG** uses the same **manual Chrome login** as the other sites when you answer **yes** to “Login first?”; cookies from the browser are applied to `web_scraper`’s `requests` session (and saved via `cookies.json` like other flows that use the session manager). Answer **no** only if you do not need an authenticated session.
 
 ---
 

@@ -141,15 +141,9 @@ def manual_login(url="https://novelpia.com/", wait_time=60, debug=True):
             time.sleep(1)
         
         print("Login successful")
-        
+
         # TODO: add check for successful login
-        return {
-            'page_info': page_info,
-            'network_data': network_data,
-            'output_file': output_file,
-            'html_path': html_path,
-            'driver': driver  # Return the driver so you can use it later
-        }
+        return {"driver": driver}
         
     except Exception as e:
         if debug:
