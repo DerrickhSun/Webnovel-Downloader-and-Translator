@@ -811,6 +811,24 @@ def replace_multiple_strings(text: str, strings_to_replace: List[str], replaceme
             print(f"Error replacing multiple strings: {str(e)}")
         raise e
 
+def safe_dirname(name: str, max_length: int = 50) -> str:
+    """
+    Truncates a title so it's safe to use as a directory name inside the deeply
+    nested texts/ tree (avoids exceeding Windows' ~260-character MAX_PATH limit,
+    which otherwise makes files inaccessible to most editors/tools).
+
+    Args:
+        name (str): The raw title to shorten
+        max_length (int): Maximum number of characters to keep
+
+    Returns:
+        str: The truncated, whitespace-trimmed name
+    """
+    name = name.strip()
+    if len(name) <= max_length:
+        return name
+    return name[:max_length].rstrip()
+
 def ensure_directory_exists(directory_path: str, debug: bool = False) -> bool:
     """
     Creates a directory if it doesn't exist.
