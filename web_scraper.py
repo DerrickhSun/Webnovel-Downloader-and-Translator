@@ -161,31 +161,34 @@ headers = {
     'X-Requested-With': 'XMLHttpRequest'
 }
 
-def sanitize_filename(input_string: str) -> str:
+def sanitize_filename(input_string: str, max_length: int = 60) -> str:
     """
     Sanitizes a string to be used as a filename by removing invalid characters.
-    
+
     Args:
         input_string (str): The string to sanitize
-        
+        max_length (int): Maximum length to keep. Kept well under the filesystem's
+            255-char limit because these filenames live several directories deep
+            (texts/inprogress_translations/<novel>/translated/...), and Windows'
+            ~260-char MAX_PATH limit is hit long before 255 chars of filename alone.
+
     Returns:
         str: A valid filename string
     """
     # Define invalid characters (Windows and Unix systems)
     invalid_chars = '<>:"/\\|?*\x00-\x1f'
-    
+
     # Remove invalid characters
     sanitized = re.sub(f'[{re.escape(invalid_chars)}]', '', input_string)
-    
+
     # Remove leading/trailing spaces and dots
     sanitized = sanitized.strip('. ')
-    
+
     # If the string is empty after sanitization, return a default name
     if not sanitized:
         return "unnamed_file"
-        
-    # Limit length to 255 characters (common filesystem limit)
-    return sanitized[:255]
+
+    return sanitized[:max_length].rstrip()
 
 def fetch_lists_from_url(url: str, list_class: Optional[str] = None, parent_div_class: Optional[str] = None, debug: bool = True) -> List[List[Dict[str, str]]]:
     """

@@ -10,6 +10,7 @@ SITE_DEFAULT_LANGUAGES: Dict[str, str] = {
     "qidian": "chinese",
     "novelpia": "korean",
     "wattpad": "english",
+    "syosetu": "japanese",
 }
 
 # Target output language (currently only English; extend later for other targets)
@@ -48,31 +49,34 @@ def needs_translation(url: str, target_language: Optional[str] = None) -> bool:
     return default.lower() != target.lower()
 
 
-def sanitize_filename(input_string: str) -> str:
+def sanitize_filename(input_string: str, max_length: int = 60) -> str:
     """
     Sanitizes a string to be used as a filename by removing invalid characters.
-    
+
     Args:
         input_string (str): The string to sanitize
-        
+        max_length (int): Maximum length to keep. Kept well under the filesystem's
+            255-char limit because these filenames live several directories deep
+            (texts/inprogress_translations/<novel>/translated/...), and Windows'
+            ~260-char MAX_PATH limit is hit long before 255 chars of filename alone.
+
     Returns:
         str: A valid filename string
     """
     # Define invalid characters (Windows and Unix systems)
     invalid_chars = '<>:"/\\|?*\x00-\x1f'
-    
+
     # Remove invalid characters
     sanitized = re.sub(f'[{re.escape(invalid_chars)}]', '', input_string)
-    
+
     # Remove leading/trailing spaces and dots
     sanitized = sanitized.strip('. ')
-    
+
     # If the string is empty after sanitization, return a default name
     if not sanitized:
         return "unnamed_file"
-        
-    # Limit length to 255 characters (common filesystem limit)
-    return sanitized[:255]
+
+    return sanitized[:max_length].rstrip()
 
 def replace_with_dictionary(text: str, replacement_dict: Dict[str, str], confident = False, debug: bool = False) -> str:
     """

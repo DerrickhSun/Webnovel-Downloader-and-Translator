@@ -14,6 +14,7 @@ import scrapers.novelpiaScraper as novelpiaScraper
 import scrapers.qidianScraper as qidianScraper
 import scrapers.wattpadScraper as wattpadScraper
 import scrapers.fsacgScraper as fsacgScraper
+import scrapers.syosetuScraper as syosetuScraper
 
 load_dotenv()
 
@@ -61,6 +62,11 @@ def _is_fsacg_url(url: str) -> bool:
     return "sfacg" in u or "fsacg" in u
 
 
+def _is_syosetu_url(url: str) -> bool:
+    """Shousetsuka ni Narou hosts use syosetu.com (e.g. ncode.syosetu.com)."""
+    return "syosetu" in url.lower()
+
+
 def download_novel(*, prompts: Prompts, scrape_driver=None) -> None:
     url = str(prompts.text("Novel name or URL: "))
 
@@ -82,23 +88,30 @@ def download_novel(*, prompts: Prompts, scrape_driver=None) -> None:
         name = name_dict[url]
     prompts.info("Title: " + name)
 
+    # Folder/file names are truncated separately from the display title above:
+    # deeply nested paths (texts/inprogress_translations/<name>/translated/v.._....txt)
+    # can exceed Windows' ~260-char MAX_PATH limit and become unopenable otherwise.
+    dir_name = text_utils.safe_dirname(name)
+    if dir_name != name:
+        prompts.info("Using shortened folder name: " + dir_name)
+
     manual_name_translation = {}
     if url in manual_name_translation_dict.keys():
         prompts.info("Found manual name translation for this novel")
         manual_name_translation = manual_name_translation_dict[url]
 
     text_utils.ensure_directory_exists(
-        "texts/inprogress_translations/" + name + "/translated"
+        "texts/inprogress_translations/" + dir_name + "/translated"
     )
     text_utils.ensure_directory_exists(
-        "texts/inprogress_translations/" + name + "/untranslated"
+        "texts/inprogress_translations/" + dir_name + "/untranslated"
     )
 
     pickup = prompts.yes_no("Pickup from where you left off? (y/n): ")
     if pickup:
         start_chapter = (
             text_utils.get_last_chapter_number(
-                "texts/inprogress_translations/" + name + "/translated", debug=False
+                "texts/inprogress_translations/" + dir_name + "/translated", debug=False
             )
             + 1
         )
@@ -115,7 +128,7 @@ def download_novel(*, prompts: Prompts, scrape_driver=None) -> None:
     if "novelpia" in url:
         novelpiaScraper.novelpia_scrape(
             url,
-            name,
+            dir_name,
             start_chapter,
             end_chapter,
             manual_name_translation,
@@ -125,7 +138,7 @@ def download_novel(*, prompts: Prompts, scrape_driver=None) -> None:
     elif "qidian" in url:
         qidianScraper.qidian_scrape(
             url,
-            name,
+            dir_name,
             start_chapter,
             end_chapter,
             manual_name_translation,
@@ -135,7 +148,7 @@ def download_novel(*, prompts: Prompts, scrape_driver=None) -> None:
     elif "wattpad" in url:
         wattpadScraper.wattpad_scrape(
             url,
-            name,
+            dir_name,
             start_chapter,
             end_chapter,
             manual_name_translation,
@@ -145,7 +158,17 @@ def download_novel(*, prompts: Prompts, scrape_driver=None) -> None:
     elif _is_fsacg_url(url):
         fsacgScraper.fsacg_scrape(
             url,
-            name,
+            dir_name,
+            start_chapter,
+            end_chapter,
+            manual_name_translation,
+            use_login=use_login,
+            browser_driver=scrape_driver,
+        )
+    elif _is_syosetu_url(url):
+        syosetuScraper.syosetu_scrape(
+            url,
+            dir_name,
             start_chapter,
             end_chapter,
             manual_name_translation,
