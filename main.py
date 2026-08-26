@@ -220,6 +220,8 @@ def _run_browser_action(driver, fn: Callable[[], None]) -> None:
         fn()
     except PromptCancelled:
         print("Cancelled.")
+    except WebDriverException:
+        print("Browser was closed mid-action.")
     finally:
         # Download may navigate the same window to the novel site; reload app.html so
         # window.App exists again (endWizard alone would fail off-origin).
